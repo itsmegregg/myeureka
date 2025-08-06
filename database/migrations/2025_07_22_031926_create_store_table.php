@@ -16,7 +16,7 @@ return new class extends Migration
 
             $table->string('store_name')->unique();
             $table->string('store_description')->nullable();
-            $table->string('store_email')->unique();
+            $table->string('store_email')->nullable();
             $table->string('store_logo')->nullable();
             $table->json('features')->nullable();
             $table->string('active')->default('yes');

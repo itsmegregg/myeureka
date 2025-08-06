@@ -1,5 +1,6 @@
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { type NavItem } from '@/types';
@@ -8,8 +9,8 @@ import { type PropsWithChildren } from 'react';
 
 const sidebarNavItems: NavItem[] = [
     {
-        title: 'Profile',
-        href: '/settings/profile',
+        title: 'Branch',
+        href: '/settings/branch',
         icon: null,
     },
     {
@@ -59,9 +60,9 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
 
                 <Separator className="my-6 md:hidden" />
 
-                <div className="flex-1 md:max-w-2xl">
-                    <section className="max-w-xl space-y-12">{children}</section>
-                </div>
+                <Card className="flex-1">
+                    <section className="w-full">{children}</section>
+                </Card>
             </div>
         </div>
     );

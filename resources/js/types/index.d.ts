@@ -15,11 +15,16 @@ export interface NavGroup {
     items: NavItem[];
 }
 
+export interface subItem {
+    title: string;
+    href: string;
+}
 export interface NavItem {
     title: string;
     href: string;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    subItems?: subItem[];
 }
 
 export interface SharedData {
@@ -40,4 +45,29 @@ export interface User {
     created_at: string;
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
+}
+
+export interface PageProps {
+    auth: {
+        user: User;
+    };
+    [key: string]: unknown;
+}
+
+
+export interface Branch {
+    branch_code: string;
+    store_code: string;
+    branch_name: string;
+    branch_description: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    [key: string]: unknown;
+}
+
+export interface Store {
+    store_code: string;
+    store_name: string;
+    [key: string]: unknown;
 }

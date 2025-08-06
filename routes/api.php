@@ -1,0 +1,113 @@
+<?php
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\StoreController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ItemSalesController;
+use App\Http\Controllers\HeaderController;
+use App\Http\Controllers\PaymentDetailsController;
+use App\Http\Controllers\HourlyController;
+use App\Http\Controllers\BIRDetailedController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DiscountController;
+use App\Http\Controllers\api\DailyController;
+use App\Http\Controllers\api\ItemDetailsController; 
+use App\Http\Controllers\api\PaymentController;
+use App\Http\Controllers\api\HeaderApiController;
+use App\Http\Controllers\BIRSummaryController;
+use App\Http\Controllers\api\GovernmentDiscountController;
+use App\Http\Controllers\GovernmentDataController;
+use App\Http\Controllers\VoidTxController;
+use App\Http\Controllers\CashierController;
+use App\Http\Controllers\FastMovingController;
+use App\Http\Controllers\DailySalesController;
+use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\Api\UpdateCommandController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});
+
+// Check session endpoint moved to auth.php with SessionController
+// Route::middleware('auth:sanctum')->get('/check-session', function () {
+//     return response()->json(['authenticated' => true]);
+// });
+
+
+Route::apiResource('store', StoreController::class);
+Route::apiResource('branches', BranchController::class);
+Route::apiResource('products', ProductController::class);
+Route::apiResource('categories', CategoryController::class);    
+
+//dashboard apis
+Route::get('/dashboard/summary', [DashboardController::class, 'getDashboardSummary']);
+Route::get('/sales/average-sales-per-day', [DashboardController::class, 'calculateAverageSalesPerDay']);
+Route::get('/sales/average-tx-per-day', [DashboardController::class, 'CalculateAverageTxPerDay']);
+Route::get('/sales/average-sales-per-customer', [DashboardController::class, 'getAverageSalesPerCustomer']);
+Route::get('/sales/total-sales', [DashboardController::class, 'TotalSales']);
+//charts apis
+Route::get('/sales/total-sales-per-day', [DashboardController::class, 'totalSalesPerDay']);
+Route::get('/sales/payment-chart', [DashboardController::class, 'PaymentTypeChart']);
+
+//item sales apis
+Route::get('/item-sales/product-mix', [ItemSalesController::class, 'ProductMix']);
+Route::get('/item-sales/product-mix-all', [ItemSalesController::class, 'ProductMixAll']);
+
+Route::get('/item-sales/category-mix-all', [ItemSalesController::class, 'productMixCategoryAll']);
+Route::get('/item-sales/product-mix-category', [ItemSalesController::class, 'productMixCategory']);
+
+
+//dailysales apis
+
+
+Route::get('/sales/daily-report', [HeaderController::class, 'DailySalesReport']);
+
+//discount apis
+Route::get('/sales/discount-report', [DiscountController::class, 'discountReport']);
+
+//payment details apis
+Route::get('/sales/payment-details', [PaymentDetailsController::class, 'getPaymentData']);
+Route::get('/sales/hourly-report', [HourlyController::class, 'getHourlyData']);
+
+//bir detailed apis
+Route::get('/bir/detailed-report', [BIRDetailedController::class, 'index']);
+Route::get('/bir/detailed-report/export', [BIRDetailedController::class, 'export']);
+
+//bir summary apis
+Route::get('/bir/summary-report', [BIRSummaryController::class, 'getSummary']);
+
+Route::get('/bir/summary-report/export', [BIRSummaryController::class, 'exportSummary'])
+    ->middleware('auth:sanctum');
+
+//api sending
+Route::post('/daily-summary', [DailyController::class, 'store']);
+Route::post('/item-details', [ItemDetailsController::class, 'store']);
+
+Route::post('/header', [HeaderApiController::class, 'store']);
+Route::post('/payment-details', [PaymentController::class, 'store']);
+Route::post('/government', [GovernmentDiscountController::class, 'store']);
+
+Route::get('/government-data', [GovernmentDataController::class, 'requestData']);
+Route::get('/void-tx', [VoidTxController::class, 'VoidTxData']);
+Route::get('/cashier', [CashierController::class, 'CashierData']);
+Route::get('/fastmoving', [FastMovingController::class, 'FastMovingData']);
+Route::get('/daily-sales', [DailySalesController::class, 'getDailySalesData']);
+
+Route::get('/cashiers', [CashierController::class, 'index']);
+Route::get('/payment-list', [PaymentDetailsController::class, 'paymentList']);
+
+Route::post('/run-command', [UpdateCommandController::class, 'runCommand']);
+
+//receipt data
+Route::post('/receipt', [ReceiptController::class, 'store']);
+Route::get('/receipt/{receipt}', [ReceiptController::class, 'show']);
+Route::get('/receipt/{receipt}/download/txt', [ReceiptController::class, 'downloadTxt']);
+Route::get('/receipt/{receipt}/download/pdf', [ReceiptController::class, 'downloadPdf']);
+// Route::get('/receipt', [ReceiptController::class, 'index']);
+
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth:sanctum');
