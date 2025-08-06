@@ -23,7 +23,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('123456789'),
                 'created_at' => now(),
                 'updated_at' => now(),
-                'store_name' => 'Ramen Kuroda',
+                'store_name' => 'RAMEN KURODA',
                
             ]
         ]);

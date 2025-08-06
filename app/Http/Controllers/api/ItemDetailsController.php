@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ItemDetails;
+use App\Models\ItemDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -23,8 +23,8 @@ class ItemDetailsController extends Controller
     public function store(Request $request)
 {
     $validatedData = $request->validate([
-        'branch_name' => 'required|exists:branch,branch_name',
-        'store_name' => 'required|exists:store,store_name',
+        'branch_name' => 'required|string',
+        'store_name' => 'required|string',
         'terminal_number' => 'required|string',
         'si_number' => 'required|string',
         'product_code' => 'required|string',
@@ -45,12 +45,15 @@ class ItemDetailsController extends Controller
         \DB::beginTransaction();
         
         // Step 1: Check if category exists, if not, create it - process category first
-        $existingCategory = \App\Models\Category::where('category_code', $validatedData['category_code'])->first();
+        $existingCategory = \App\Models\Category::where('category_name', $validatedData['category_description'])
+            ->where('store_name', $validatedData['store_name'])
+            ->first();
         if (!$existingCategory) {
-            \App\Models\Category::create([
+            $existingCategory = \App\Models\Category::create([
                 'category_code' => $validatedData['category_code'],
-                'category_name' => $validatedData['category_description'], // Using description as name
+                'category_name' => $validatedData['category_description'],
                 'category_description' => $validatedData['category_description'],
+                'store_name' => $validatedData['store_name'],
             ]);
             Log::info('New category created: ' . $validatedData['category_code']);
         }
@@ -60,17 +63,18 @@ class ItemDetailsController extends Controller
         if (!$existingProduct) {
             \App\Models\Product::create([
                 'product_code' => $validatedData['product_code'],
-                'category_code' => $validatedData['category_code'],
-                'product_name' => $validatedData['description'], // Using description as product_name
-                'product_description' => $validatedData['description'], // Using description as product_description
-                'branch_name' => $validatedData['branch_name'], // Direct branch_name from input
+                'category_code' => $existingCategory->category_code,
+                'product_name' => $validatedData['description'],
+                'product_description' => $validatedData['description'],
+                'branch_name' => $validatedData['branch_name'],
+                'store_name' => $validatedData['store_name'],
             ]);
             Log::info('New product created: ' . $validatedData['product_code']);
         }
 
         // Now process ItemDetails after category and product are handled
         // Step 3: Check if record already exists with these key fields
-        $existingRecord = ItemDetails::where('branch_name', $validatedData['branch_name'])
+        $existingRecord = ItemDetail::where('branch_name', $validatedData['branch_name'])
             ->where('terminal_number', $validatedData['terminal_number'])
             ->where('si_number', $validatedData['si_number'])
             ->where('combo_header', $validatedData['combo_header'])
@@ -90,7 +94,7 @@ class ItemDetailsController extends Controller
             ], 200);
         } else {
             // Create new record
-            $itemDetail = ItemDetails::create($validatedData);
+            $itemDetail = ItemDetail::create($validatedData);
             \DB::commit();
             return response()->json([
                 'data' => $itemDetail,
@@ -123,27 +127,5 @@ class ItemDetailsController extends Controller
     }
 }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(ItemDetails $itemDetails)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, ItemDetails $itemDetails)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(ItemDetails $itemDetails)
-    {
-        //
-    }
+   
 }

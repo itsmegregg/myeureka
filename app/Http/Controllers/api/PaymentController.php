@@ -23,8 +23,8 @@ class PaymentController extends Controller
     {
         try {
             $validatedData = $request->validate([
-                'branch_name' => 'required|exists:branch,branch_name',
-                'store_name' => 'required|exists:store,store_name',
+                'branch_name' => 'required|string',
+                'store_name' => 'required|string',
                 'terminal_number' => 'required|string',
                 'si_number' => 'required|string',
                 'payment_type' => 'required|string',

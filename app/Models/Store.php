@@ -9,16 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Store extends Model
 {
     use HasFactory;
+    
 
-    protected $primaryKey = 'store_name';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    // Let Laravel use the default 'id' as primary key from migration
 
     protected $fillable = [
         'store_name',
         'store_description',
         'store_email',
-        'store_password',
         'store_logo',
         'features',
         'active',
@@ -29,9 +27,7 @@ class Store extends Model
         'active' => 'string',
     ];
 
-    protected $hidden = [
-        'store_password',
-    ];
+    // No password field in migration
 
     public function users(): HasMany
     {
