@@ -17,15 +17,15 @@ import {toast} from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface BranchProps {
-    branch_code: string;
-    store_code: string;
+    id?: number;
+    store_name: string;
     branch_name: string;
     branch_description: string;
     status: string;
 }
 
 interface StoreProps {
-    store_code: string;
+    id?: number;
     store_name: string;
     store_description: string;
     status: string;
@@ -38,8 +38,7 @@ export default function Branch() {
     const [isEdit, setIsEdit] = useState(false);
     const [selectedBranch, setSelectedBranch] = useState<BranchProps | null>(null);
     const [formData, setFormData] = useState<BranchProps>({
-        branch_code: '',
-        store_code: '',
+        store_name: '',
         branch_name: '',
         branch_description: '',
         status: 'inactive',
@@ -67,8 +66,7 @@ export default function Branch() {
         setIsEdit(false);
         setSelectedBranch(null);
         setFormData({
-            branch_code: '',
-            store_code: '',
+            store_name: '',
             branch_name: '',
             branch_description: '',
             status: 'inactive',
@@ -101,24 +99,30 @@ export default function Branch() {
     };
 
     const handleSubmit = async () => {
+        console.log('Form data being sent:', formData);
         try {
             if (isEdit) {
-                await axios.put(`/api/branches/${selectedBranch?.branch_code}`, formData);
+                console.log('Updating branch with ID:', selectedBranch?.id, 'Data:', formData);
+                await axios.put(`/api/branches/${selectedBranch?.id}`, formData);
                 toast("Branch Updated",{
                     description:"The branch has been successfully updated.",
                     
                 });
             } else {
+                console.log('Creating new branch with data:', formData);
                 await axios.post('/api/branches', formData);
                 toast("Branch Added",{
                     description:"The branch has been successfully added.",
                     
                 });
+                
             }
             fetchBranches();
             setOpen(false);
+            console.log('Form data sent successfully:', formData);
         } catch (error) {
             console.error("Error saving branch:", error);
+            console.log('Failed form data:', formData);
             toast("Error saving branch",{
                 description:"Failed to save branch.",
                 duration: 5000,
@@ -154,8 +158,8 @@ export default function Branch() {
                             </TableHeader>
                             <TableBody>
                                 {branches.map((branch) => (
-                                    <TableRow key={branch.branch_code}>
-                                        <TableCell>{branch.branch_code}</TableCell>
+                                    <TableRow key={branch.id}>
+                                        <TableCell>{branch.id?.toString()}</TableCell>
                                       
                                         <TableCell>{branch.branch_name}</TableCell>
                                         <TableCell>{branch.branch_description}</TableCell>
@@ -164,7 +168,7 @@ export default function Branch() {
                                             <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => handleEditClick(branch)}>
                                                 <Wrench />
                                             </Button>
-                                            <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => handleDeleteClick(branch.branch_code)}>
+                                            <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => handleDeleteClick(branch.id?.toString() || '')}>
                                                 <Trash2 className="text-destructive" />
                                             </Button>
                                         </TableCell>
@@ -183,19 +187,19 @@ export default function Branch() {
                             </DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
-                
+
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="store_code" className="text-right">Store Code</Label>
+                                <Label htmlFor="store_code" className="text-right">Store</Label>
                                 <Select
-                                    value={formData.store_code}
-                                    onValueChange={(value) => setFormData(prev => ({ ...prev, store_code: value }))}
+                                    value={formData.store_name || ''}
+                                    onValueChange={(value) => setFormData(prev => ({ ...prev, store_name: value }))}
                                 >
                                     <SelectTrigger className="col-span-3">
                                         <SelectValue placeholder="Select a store" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {stores.map((store) => (
-                                            <SelectItem key={store.store_code} value={store.store_code}>
+                                            <SelectItem key={store.store_name} value={store.store_name}>
                                                 {store.store_name}
                                             </SelectItem>
                                         ))}

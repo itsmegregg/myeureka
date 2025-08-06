@@ -29,14 +29,25 @@ class BranchController extends Controller
      */
     public function store(Request $request)
     {
-        $branch = new Branch();
-        $branch->branch_code = $request->branch_code;
-        $branch->store_code = $request->store_code;
-        $branch->branch_name = $request->branch_name;
-        $branch->branch_description = $request->branch_description;
-        $branch->status = $request->status;
-        $branch->save();
-        return response()->json($branch);
+        try {
+            $validated = $request->validate([
+                'store_name' => 'required|string|max:255',
+                'branch_name' => 'required|string|max:255',
+                'branch_description' => 'nullable|string|max:255',
+                'status' => 'required|string|max:255',
+            ]);
+
+            $branch = new Branch();
+            $branch->store_name = $validated['store_name'];
+            $branch->branch_name = $validated['branch_name'];
+            $branch->branch_description = $validated['branch_description'];
+            $branch->status = $validated['status'];
+            $branch->save();
+            
+            return response()->json($branch, 201);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
     }
 
     /**
@@ -60,8 +71,7 @@ class BranchController extends Controller
      */
     public function update(Request $request, Branch $branch)
     {
-        $branch->branch_code = $request->branch_code;
-        $branch->store_code = $request->store_code;
+        $branch->store_name = $request->store_name;
         $branch->branch_name = $request->branch_name;
         $branch->branch_description = $request->branch_description;
         $branch->status = $request->status;

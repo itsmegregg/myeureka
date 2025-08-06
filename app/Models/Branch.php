@@ -15,6 +15,7 @@ class Branch extends Model
         'branch_name',
         'branch_description',
         'store_name',
+        'status',
     ];
 
     public function store(): BelongsTo

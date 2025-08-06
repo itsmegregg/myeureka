@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('branch_description')->nullable();
             $table->string('store_name');
             $table->foreign('store_name')->references('store_name')->on('stores')->onDelete('cascade');
+            $table->string('status', 255)->default('active');
             $table->timestamps();
         });
     }
