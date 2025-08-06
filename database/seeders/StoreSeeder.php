@@ -18,7 +18,6 @@ class StoreSeeder extends Seeder
                 'store_name' => 'Ramen Kuroda',
                 'store_description' => 'Ramen Kuroda Store',
                 'store_email' => 'ramen@ramen.com',
-                'store_password' => 'ramen',
                 'store_logo' => 'ramen.png',
                 'active' => 'yes',
                 'created_at' => now(),
