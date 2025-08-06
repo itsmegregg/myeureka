@@ -39,8 +39,8 @@ class DashboardController extends Controller
             // Calculate Average Sales Per Customer
             $totals = Header::query()
                 ->select(
-                    DB::raw('SUM(header.net_amount + header.service_charge) as total_amount'),
-                    DB::raw('SUM(header.guest_count) as total_guests')
+                    DB::raw('SUM(CAST(header.net_amount AS NUMERIC) + CAST(header.service_charge AS NUMERIC)) as total_amount'),
+                    DB::raw('SUM(CAST(header.guest_count AS NUMERIC)) as total_guests')
                 )
                 ->whereBetween('header.date', [$startDate, $endDate])
                 ->when($concept_name !== 'ALL' && $concept_name !== null, function ($query) use ($concept_name) {
@@ -74,9 +74,9 @@ class DashboardController extends Controller
             }
 
             $averageSales = $averageSalesQuery->selectRaw(' 
-                SUM(item_details.net_total) as total_sales,
+                SUM(CAST(item_details.net_total AS NUMERIC)) as total_sales,
                 COUNT(DISTINCT header.date) as total_days,
-                (SUM(item_details.net_total) / COUNT(DISTINCT header.date)) AS average_sales
+                (CAST(SUM(CAST(item_details.net_total AS NUMERIC)) AS NUMERIC) / COUNT(DISTINCT header.date)) AS average_sales
             ')->first();
             
             // Calculate Average Transactions Per Day
@@ -104,8 +104,8 @@ class DashboardController extends Controller
             $dailySalesQuery = Header::query()
                 ->select(
                     'header.date',
-                    DB::raw('DATE_FORMAT(header.date, "%d %b") as date_formatted'),
-                    DB::raw('SUM(header.net_amount + header.service_charge) as total_sales')
+                    DB::raw('TO_CHAR(header.date, \'DD Mon\') as date_formatted'),
+                    DB::raw('SUM(CAST(header.net_amount AS NUMERIC) + CAST(header.service_charge AS NUMERIC)) as total_sales')
                 )
                 ->whereBetween('header.date', [$startDate, $endDate])
                 ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
@@ -127,7 +127,7 @@ class DashboardController extends Controller
                 })
                 ->select(
                     'payment_details.payment_type',
-                    DB::raw('SUM(payment_details.amount) as amount')
+                    DB::raw('SUM(CAST(payment_details.amount AS NUMERIC)) as amount')
                 )
                 ->whereBetween('header.date', [$startDate, $endDate])
                 ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
