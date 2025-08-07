@@ -11,12 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('receipt', function (Blueprint $table) {
+        Schema::create('receipts', function (Blueprint $table) {
             $table->id();
-            $table->string('file_name');
-            $table->longText('file_content');
+            $table->string('si_number');
+            $table->string('file_path');
+            $table->string('date');
             $table->string('branch_name');
+   
             $table->timestamps();
+
+            
         });
     }
 

@@ -24,7 +24,7 @@ use App\Http\Controllers\VoidTxController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\FastMovingController;
 use App\Http\Controllers\DailySalesController;
-use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\api\ReceiptController;
 use App\Http\Controllers\Api\UpdateCommandController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 

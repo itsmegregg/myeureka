@@ -10,14 +10,17 @@ class Receipt extends Model
 {
     use HasFactory;
 
+    protected $table = 'receipts';
+
     protected $fillable = [
-        'file_name',
-        'file_content',
+        'si_number',
+        'file_path',
+        'date',
         'branch_name',
     ];
 
     protected $casts = [
-        'file_content' => 'string',
+        'file_path' => 'string',
     ];
 
     public function branch(): BelongsTo
@@ -25,3 +28,4 @@ class Receipt extends Model
         return $this->belongsTo(Branch::class, 'branch_name', 'branch_name');
     }
 }
+    
