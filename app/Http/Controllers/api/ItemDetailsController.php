@@ -45,17 +45,18 @@ class ItemDetailsController extends Controller
         \DB::beginTransaction();
         
         // Step 1: Check if category exists, if not, create it - process category first
-        $existingCategory = \App\Models\Category::where('category_name', $validatedData['category_description'])
-            ->where('store_name', $validatedData['store_name'])
-            ->first();
-        if (!$existingCategory) {
-            $existingCategory = \App\Models\Category::create([
-                'category_code' => $validatedData['category_code'],
-                'category_name' => $validatedData['category_description'],
-                'category_description' => $validatedData['category_description'],
-                'store_name' => $validatedData['store_name'],
-            ]);
+        $existingCategory = \App\Models\Category::firstOrCreate([
+            'category_name' => $validatedData['category_description'],
+            'store_name' => $validatedData['store_name'],
+        ], [
+            'category_code' => $validatedData['category_code'],
+            'category_description' => $validatedData['category_description'],
+        ]);
+        
+        if ($existingCategory->wasRecentlyCreated) {
             Log::info('New category created: ' . $validatedData['category_code']);
+        } else {
+            Log::info('Existing category found: ' . $validatedData['category_code']);
         }
         
         // Step 2: Check if product exists, if not, create it - process product after category
