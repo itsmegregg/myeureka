@@ -83,7 +83,7 @@ Route::get('/bir/summary-report/export', [BIRSummaryController::class, 'exportSu
     ->middleware('auth:sanctum');
 
 //api sending
-Route::post('/daily-summary', [App\Http\Controllers\Api\DailyController::class, 'store']);
+// Route::post('/daily-summary', [App\Http\Controllers\Api\DailyController::class, 'store']);
 Route::post('/item-details', [App\Http\Controllers\Api\ItemDetailsController::class, 'store']);
 
 Route::post('/header', [App\Http\Controllers\Api\HeaderApiController::class, 'store']);
