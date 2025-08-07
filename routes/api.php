@@ -104,9 +104,7 @@ Route::post('/run-command', [UpdateCommandController::class, 'runCommand']);
 
 //receipt data
 Route::post('/receipt', [ReceiptController::class, 'store']);
-Route::get('/receipt/{receipt}', [ReceiptController::class, 'show']);
-Route::get('/receipt/{receipt}/download/txt', [ReceiptController::class, 'downloadTxt']);
-Route::get('/receipt/{receipt}/download/pdf', [ReceiptController::class, 'downloadPdf']);
+Route::post('/receipts/search-via-si-number', [ReceiptController::class, 'searchViaSiNumber']);
 // Route::get('/receipt', [ReceiptController::class, 'index']);
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])

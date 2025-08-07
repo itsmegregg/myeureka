@@ -67,4 +67,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\ValidateActiveSessio
     Route::get('daily-sales', function () {
         return Inertia::render('dailySales/index');
     })->name('daily-sales');
+
+    Route::get('receipt', function () {
+        return Inertia::render('receipt/index');
+    })->name('receipt');
 });

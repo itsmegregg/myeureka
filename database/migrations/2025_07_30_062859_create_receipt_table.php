@@ -20,8 +20,9 @@ return new class extends Migration
    
             $table->timestamps();
 
-            
+            $table->foreign('branch_name')->references('branch_name')->on('branches')->onDelete('cascade');
         });
+        
     }
 
     /**

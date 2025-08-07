@@ -127,6 +127,12 @@ const data = {
         url: "/fast-moving",
         icon: Truck,
         isActive: false,
+    },
+    {
+      title: "Receipt",
+      url: "/receipt",
+      icon: File,
+      isActive: false,
     }
    
   ],

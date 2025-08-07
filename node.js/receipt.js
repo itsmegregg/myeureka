@@ -49,6 +49,7 @@ async function processFile(filePath) {
         const siNumber = filenameParts[0] || '';
         const date = filenameParts[1] || '';
         const branchName = filenameParts[2] || '';
+        const type = filenameParts[3] || '';
 
         // Create FormData for file upload
         const form = new FormData();
@@ -56,6 +57,7 @@ async function processFile(filePath) {
         form.append('si_number', siNumber);
         form.append('date', date);
         form.append('branch_name', branchName);
+        form.append('type', type);
 
         const response = await axios.post(CONFIG.apiUrl, form, {
             timeout: CONFIG.timeout,

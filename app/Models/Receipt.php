@@ -17,6 +17,7 @@ class Receipt extends Model
         'file_path',
         'date',
         'branch_name',
+        'type',
     ];
 
     protected $casts = [

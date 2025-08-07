@@ -38,7 +38,7 @@ export function NavMain({
 
   const isPathActive = (path: string, currentUrl: string) => {
     if (path === "#") {
-      return false; // '#' is a placeholder, never active
+      return false; 
     }
     return currentUrl.startsWith(path);
   };
