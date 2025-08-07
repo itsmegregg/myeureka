@@ -88,13 +88,13 @@ class UpdateDsrTable extends Command
                     h.date, h.branch_name, h.store_name, h.terminal_number, 
                     COALESCE(ds.si_from, '0'), 
                     COALESCE(ds.si_to, '0'), 
-                    COALESCE(CAST(ds.old_grand_total AS NUMERIC(10,2)), 0), 
-                    COALESCE(CAST(ds.new_grand_total AS NUMERIC(10,2)), 0),
+                    COALESCE(CAST(ds.old_grand_total AS NUMERIC(15,2)), 0), 
+                    COALESCE(CAST(ds.new_grand_total AS NUMERIC(15,2)), 0),
                     (CAST(COALESCE(ds.si_to, '0') AS INTEGER) - CAST(COALESCE(ds.si_from, '0') AS INTEGER) + 1) AS number_of_transactions,
                     SUM(CAST(h.guest_count AS INTEGER)) AS number_of_guests,
-                    SUM(CAST(h.service_charge AS NUMERIC(10,2))) AS total_service_charge,
-                    SUM(CAST(h.gross_amount AS NUMERIC(10,2))) - COALESCE(SUM(tis.total_void_amount), 0) AS total_gross_sales,
-                    (SUM(CAST(h.net_amount AS NUMERIC(10,2))) - COALESCE(SUM(tis.total_void_amount), 0)) AS total_net_sales_after_void,
+                    SUM(CAST(h.service_charge AS NUMERIC(15,2))) AS total_service_charge,
+                    SUM(CAST(h.gross_amount AS NUMERIC(15,2))) - COALESCE(SUM(tis.total_void_amount), 0) AS total_gross_sales,
+                    (SUM(CAST(h.net_amount AS NUMERIC(15,2))) - COALESCE(SUM(tis.total_void_amount), 0)) AS total_net_sales_after_void,
                     COALESCE(SUM(tis.total_void_amount), 0) AS total_void_amount,
                     COALESCE(SUM(tis.PWD_Discount), 0) AS \"PWD_Discount\",
                     COALESCE(SUM(tis.Senior_Discount), 0) AS \"Senior_Discount\",
@@ -107,13 +107,13 @@ class UpdateDsrTable extends Command
                 LEFT JOIN (
                     SELECT
                         id.branch_name, id.store_name, id.terminal_number, id.si_number,
-                        SUM(CAST(id.void_amount AS NUMERIC(10, 2))) AS total_void_amount,
-                        SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS PWD_Discount,
-                        SUM(CASE WHEN id.discount_code = 'SENIOR' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Senior_Discount,
-                        SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS National_Athletes_Discount,
-                        SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Solo_Parent_Discount,
-                        SUM(CASE WHEN id.discount_code = 'VALOR' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Valor_Discount,
-                        SUM(CASE WHEN id.discount_code NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT') THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Other_Discounts
+                        SUM(CAST(id.void_amount AS NUMERIC(15, 2))) AS total_void_amount,
+                        SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS PWD_Discount,
+                        SUM(CASE WHEN id.discount_code = 'SENIOR' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Senior_Discount,
+                        SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS National_Athletes_Discount,
+                        SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Solo_Parent_Discount,
+                        SUM(CASE WHEN id.discount_code = 'VALOR' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Valor_Discount,
+                        SUM(CASE WHEN id.discount_code NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT') THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Other_Discounts
                     FROM item_details id
                     GROUP BY id.branch_name, id.store_name, id.terminal_number, id.si_number
                 ) tis ON h.branch_name = tis.branch_name AND h.store_name = tis.store_name AND h.terminal_number = tis.terminal_number AND h.si_number = tis.si_number
@@ -225,13 +225,13 @@ class UpdateDsrTable extends Command
                     h.date, h.branch_name, h.store_name, h.terminal_number, 
                     COALESCE(ds.si_from, '0'), 
                     COALESCE(ds.si_to, '0'), 
-                    COALESCE(CAST(ds.old_grand_total AS NUMERIC(10,2)), 0), 
-                    COALESCE(CAST(ds.new_grand_total AS NUMERIC(10,2)), 0),
+                    COALESCE(CAST(ds.old_grand_total AS NUMERIC(15,2)), 0), 
+                    COALESCE(CAST(ds.new_grand_total AS NUMERIC(15,2)), 0),
                     (CAST(COALESCE(ds.si_to, '0') AS INTEGER) - CAST(COALESCE(ds.si_from, '0') AS INTEGER) + 1) AS number_of_transactions,
                     SUM(CAST(h.guest_count AS INTEGER)) AS number_of_guests,
-                    SUM(CAST(h.service_charge AS NUMERIC(10,2))) AS total_service_charge,
-                    SUM(CAST(h.gross_amount AS NUMERIC(10,2))) - COALESCE(SUM(tis.total_void_amount), 0) AS total_gross_sales,
-                    (SUM(CAST(h.net_amount AS NUMERIC(10,2))) - COALESCE(SUM(tis.total_void_amount), 0)) AS total_net_sales_after_void,
+                    SUM(CAST(h.service_charge AS NUMERIC(15,2))) AS total_service_charge,
+                    SUM(CAST(h.gross_amount AS NUMERIC(15,2))) - COALESCE(SUM(tis.total_void_amount), 0) AS total_gross_sales,
+                    (SUM(CAST(h.net_amount AS NUMERIC(15,2))) - COALESCE(SUM(tis.total_void_amount), 0)) AS total_net_sales_after_void,
                     COALESCE(SUM(tis.total_void_amount), 0) AS total_void_amount,
                     COALESCE(SUM(tis.PWD_Discount), 0) AS \"PWD_Discount\",
                     COALESCE(SUM(tis.Senior_Discount), 0) AS \"Senior_Discount\",
@@ -244,13 +244,13 @@ class UpdateDsrTable extends Command
                 LEFT JOIN (
                     SELECT
                         id.branch_name, id.store_name, id.terminal_number, id.si_number,
-                        SUM(CAST(id.void_amount AS NUMERIC(10, 2))) AS total_void_amount,
-                        SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS PWD_Discount,
-                        SUM(CASE WHEN id.discount_code = 'SENIOR' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Senior_Discount,
-                        SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS National_Athletes_Discount,
-                        SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Solo_Parent_Discount,
-                        SUM(CASE WHEN id.discount_code = 'VALOR' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Valor_Discount,
-                        SUM(CASE WHEN id.discount_code NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT') THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Other_Discounts
+                        SUM(CAST(id.void_amount AS NUMERIC(15, 2))) AS total_void_amount,
+                        SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS PWD_Discount,
+                        SUM(CASE WHEN id.discount_code = 'SENIOR' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Senior_Discount,
+                        SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS National_Athletes_Discount,
+                        SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Solo_Parent_Discount,
+                        SUM(CASE WHEN id.discount_code = 'VALOR' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Valor_Discount,
+                        SUM(CASE WHEN id.discount_code NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT') THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Other_Discounts
                     FROM item_details id
                     GROUP BY id.branch_name, id.store_name, id.terminal_number, id.si_number
                 ) tis ON h.branch_name = tis.branch_name AND h.store_name = tis.store_name AND h.terminal_number = tis.terminal_number AND h.si_number = tis.si_number
@@ -335,13 +335,13 @@ class UpdateDsrTable extends Command
                     h.date, h.branch_name, h.store_name, h.terminal_number, 
                     COALESCE(ds.si_from, '0'), 
                     COALESCE(ds.si_to, '0'), 
-                    COALESCE(CAST(ds.old_grand_total AS NUMERIC(10,2)), 0), 
-                    COALESCE(CAST(ds.new_grand_total AS NUMERIC(10,2)), 0),
+                    COALESCE(CAST(ds.old_grand_total AS NUMERIC(15,2)), 0), 
+                    COALESCE(CAST(ds.new_grand_total AS NUMERIC(15,2)), 0),
                     (CAST(COALESCE(ds.si_to, '0') AS INTEGER) - CAST(COALESCE(ds.si_from, '0') AS INTEGER) + 1) AS number_of_transactions,
                     SUM(CAST(h.guest_count AS INTEGER)) AS number_of_guests,
-                    SUM(CAST(h.service_charge AS NUMERIC(10,2))) AS total_service_charge,
-                    SUM(CAST(h.gross_amount AS NUMERIC(10,2))) - COALESCE(SUM(tis.total_void_amount), 0) AS total_gross_sales,
-                    (SUM(CAST(h.net_amount AS NUMERIC(10,2))) - COALESCE(SUM(tis.total_void_amount), 0)) AS total_net_sales_after_void,
+                    SUM(CAST(h.service_charge AS NUMERIC(15,2))) AS total_service_charge,
+                    SUM(CAST(h.gross_amount AS NUMERIC(15,2))) - COALESCE(SUM(tis.total_void_amount), 0) AS total_gross_sales,
+                    (SUM(CAST(h.net_amount AS NUMERIC(15,2))) - COALESCE(SUM(tis.total_void_amount), 0)) AS total_net_sales_after_void,
                     COALESCE(SUM(tis.total_void_amount), 0) AS total_void_amount,
                     COALESCE(SUM(tis.PWD_Discount), 0) AS \"PWD_Discount\",
                     COALESCE(SUM(tis.Senior_Discount), 0) AS \"Senior_Discount\",
@@ -354,13 +354,13 @@ class UpdateDsrTable extends Command
                 LEFT JOIN (
                     SELECT
                         id.branch_name, id.store_name, id.terminal_number, id.si_number,
-                        SUM(CAST(id.void_amount AS NUMERIC(10, 2))) AS total_void_amount,
-                        SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS PWD_Discount,
-                        SUM(CASE WHEN id.discount_code = 'SENIOR' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Senior_Discount,
-                        SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS National_Athletes_Discount,
-                        SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Solo_Parent_Discount,
-                        SUM(CASE WHEN id.discount_code = 'VALOR' THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Valor_Discount,
-                        SUM(CASE WHEN id.discount_code NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT') THEN CAST(id.discount_amount AS NUMERIC(10, 2)) ELSE 0 END) AS Other_Discounts
+                        SUM(CAST(id.void_amount AS NUMERIC(15, 2))) AS total_void_amount,
+                        SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS PWD_Discount,
+                        SUM(CASE WHEN id.discount_code = 'SENIOR' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Senior_Discount,
+                        SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS National_Athletes_Discount,
+                        SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Solo_Parent_Discount,
+                        SUM(CASE WHEN id.discount_code = 'VALOR' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Valor_Discount,
+                        SUM(CASE WHEN id.discount_code NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT') THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Other_Discounts
                     FROM item_details id
                     GROUP BY id.branch_name, id.store_name, id.terminal_number, id.si_number
                 ) tis ON h.branch_name = tis.branch_name AND h.store_name = tis.store_name AND h.terminal_number = tis.terminal_number AND h.si_number = tis.si_number
