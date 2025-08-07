@@ -83,12 +83,12 @@ Route::get('/bir/summary-report/export', [BIRSummaryController::class, 'exportSu
     ->middleware('auth:sanctum');
 
 //api sending
-// Route::post('/daily-summary', [App\Http\Controllers\Api\DailyController::class, 'store']);
-Route::post('/item-details', [App\Http\Controllers\Api\ItemDetailsController::class, 'store']);
+Route::post('/daily-summary', [App\Http\Controllers\API\DailyController::class, 'store']);
+Route::post('/item-details', [App\Http\Controllers\API\ItemDetailsController::class, 'store']);
 
-Route::post('/header', [App\Http\Controllers\Api\HeaderApiController::class, 'store']);
-Route::post('/payment-details', [App\Http\Controllers\Api\PaymentController::class, 'store']);
-Route::post('/government', [App\Http\Controllers\Api\GovernmentDiscountController::class, 'store']);
+Route::post('/header', [App\Http\Controllers\API\HeaderApiController::class, 'store']);
+Route::post('/payment-details', [App\Http\Controllers\API\PaymentController::class, 'store']);
+Route::post('/government', [App\Http\Controllers\API\GovernmentDiscountController::class, 'store']);
 
 Route::get('/government-data', [GovernmentDataController::class, 'requestData']);
 Route::get('/void-tx', [VoidTxController::class, 'VoidTxData']);
