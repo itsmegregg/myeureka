@@ -13,8 +13,9 @@ use App\Http\Controllers\BIRDetailedController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DiscountController;
-use App\Http\Controllers\Api\DailyController;
 use App\Http\Controllers\Api\ItemDetailsController; 
+use App\Http\Controllers\Api\DailyController;
+
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\HeaderApiController;
 use App\Http\Controllers\BIRSummaryController;
