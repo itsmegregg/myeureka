@@ -8,7 +8,6 @@ import AverageTxPerDay from "./components/card/average-tx-per-day";
 import TotalSales from "./components/card/total-sales";
 import { Head } from "@inertiajs/react";
 import PaymentTypeChart from "./components/chart/paymentTypeChart";
-import TotalSalesPerDayChart from "./components/chart/totalSalesPerDayChart";
 import { useBranchStore } from "@/store/useBranch";
 import { useMonthPicker } from "@/store/useMonthPicker";
 import { useStore } from "@/store/useStore";
@@ -17,6 +16,8 @@ import axios from "axios";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import TotalSalesPerDayChart from "./components/chart/totalSalesPerDayChart";
+
 
 interface DashboardData {
     average_sales_per_customer: {

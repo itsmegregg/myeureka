@@ -59,7 +59,6 @@ class DashboardController extends Controller
             $averageSalesQuery = Header::query()
                 ->join('item_details', function ($join) {
                     $join->on('header.si_number', '=', 'item_details.si_number')
-                         ->on('header.terminal_number', '=', 'item_details.terminal_number')
                          ->on('header.branch_name', '=', 'item_details.branch_name');
                 })
                 ->whereBetween('header.date', [$startDate, $endDate]);
@@ -122,7 +121,6 @@ class DashboardController extends Controller
             $paymentTypeQuery = PaymentDetail::query()
                 ->join('header', function ($join) {
                     $join->on('payment_details.si_number', '=', 'header.si_number')
-                         ->on('payment_details.terminal_number', '=', 'header.terminal_number')
                          ->on('payment_details.branch_name', '=', 'header.branch_name');
                 })
                 ->select(

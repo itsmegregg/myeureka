@@ -17,7 +17,7 @@ HighchartsExportData(Highcharts);
 HighchartsOfflineExporting(Highcharts);
 
 interface TotalSalesData {
-  total_sales: number;
+  total_sales: string | number;
   date_formatted: string;
 }
 
@@ -95,9 +95,14 @@ const TotalSalesPerDayChart: React.FC<Props> = ({ data, loading, error }) => {
       {
         name: 'Sales',
         type: 'column',
-        data: data?.map((item) => item.total_sales) || [],
+        data: (data || []).map((item) => {
+          const salesValue = item.total_sales;
+          const numericValue = typeof salesValue === 'string' 
+            ? parseFloat(salesValue) 
+            : Number(salesValue);
+          return isNaN(numericValue) ? 0 : numericValue;
+        }),
       },
-      
     ],
     responsive: {
       rules: [
