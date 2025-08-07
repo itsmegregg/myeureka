@@ -99,11 +99,11 @@ Route::get('/daily-sales', [DailySalesController::class, 'getDailySalesData']);
 Route::get('/cashiers', [CashierController::class, 'index']);
 Route::get('/payment-list', [PaymentDetailsController::class, 'paymentList']);
 
-Route::post('/run-command', [App\Http\Controllers\Api\UpdateCommandController::class, 'runCommand']);
+Route::post('/run-command', [App\Http\Controllers\API\UpdateCommandController::class, 'runCommand']);
 
 //receipt data
-Route::post('/receipt', [App\Http\Controllers\Api\ReceiptController::class, 'store']);
-Route::post('/receipts/search-via-si-number', [App\Http\Controllers\Api\ReceiptController::class, 'searchViaSiNumber']);
+Route::post('/receipt', [App\Http\Controllers\API\ReceiptController::class, 'store']);
+Route::post('/receipts/search-via-si-number', [App\Http\Controllers\API\ReceiptController::class, 'searchViaSiNumber']);
 // Route::get('/receipt', [ReceiptController::class, 'index']);
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
