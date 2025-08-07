@@ -13,20 +13,18 @@ use App\Http\Controllers\BIRDetailedController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DiscountController;
-use App\Http\Controllers\Api\ItemDetailsController; 
-use App\Http\Controllers\Api\DailyController;
-
-use App\Http\Controllers\Api\PaymentController;
-use App\Http\Controllers\Api\HeaderApiController;
-use App\Http\Controllers\BIRSummaryController;
-use App\Http\Controllers\Api\GovernmentDiscountController;
 use App\Http\Controllers\GovernmentDataController;
+
+
+use App\Http\Controllers\BIRSummaryController;
+
+use App\Http\Controllers\GovernmentDtaController;
 use App\Http\Controllers\VoidTxController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\FastMovingController;
 use App\Http\Controllers\DailySalesController;
-use App\Http\Controllers\Api\ReceiptController;
-use App\Http\Controllers\Api\UpdateCommandController;
+
+
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -85,12 +83,12 @@ Route::get('/bir/summary-report/export', [BIRSummaryController::class, 'exportSu
     ->middleware('auth:sanctum');
 
 //api sending
-Route::post('/daily-summary', [DailyController::class, 'store']);
-Route::post('/item-details', [ItemDetailsController::class, 'store']);
+Route::post('/daily-summary', [App\Http\Controllers\Api\DailyController::class, 'store']);
+Route::post('/item-details', [App\Http\Controllers\Api\ItemDetailsController::class, 'store']);
 
-Route::post('/header', [HeaderApiController::class, 'store']);
-Route::post('/payment-details', [PaymentController::class, 'store']);
-Route::post('/government', [GovernmentDiscountController::class, 'store']);
+Route::post('/header', [App\Http\Controllers\Api\HeaderApiController::class, 'store']);
+Route::post('/payment-details', [App\Http\Controllers\Api\PaymentController::class, 'store']);
+Route::post('/government', [App\Http\Controllers\Api\GovernmentDiscountController::class, 'store']);
 
 Route::get('/government-data', [GovernmentDataController::class, 'requestData']);
 Route::get('/void-tx', [VoidTxController::class, 'VoidTxData']);
@@ -101,11 +99,11 @@ Route::get('/daily-sales', [DailySalesController::class, 'getDailySalesData']);
 Route::get('/cashiers', [CashierController::class, 'index']);
 Route::get('/payment-list', [PaymentDetailsController::class, 'paymentList']);
 
-Route::post('/run-command', [UpdateCommandController::class, 'runCommand']);
+Route::post('/run-command', [App\Http\Controllers\Api\UpdateCommandController::class, 'runCommand']);
 
 //receipt data
-Route::post('/receipt', [ReceiptController::class, 'store']);
-Route::post('/receipts/search-via-si-number', [ReceiptController::class, 'searchViaSiNumber']);
+Route::post('/receipt', [App\Http\Controllers\Api\ReceiptController::class, 'store']);
+Route::post('/receipts/search-via-si-number', [App\Http\Controllers\Api\ReceiptController::class, 'searchViaSiNumber']);
 // Route::get('/receipt', [ReceiptController::class, 'index']);
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
