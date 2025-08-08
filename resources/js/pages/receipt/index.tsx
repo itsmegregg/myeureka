@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useBranchStore } from "@/store/useBranch";
 import axios from 'axios';
+import { jsPDF } from 'jspdf';
 
 
 interface Receipt {
@@ -23,6 +24,40 @@ interface Receipt {
     type: string;
     created_at: string;
     updated_at: string;
+}
+
+function downloadTxtAsPdf(filePath: string, suggestedName: string) {
+    return (async () => {
+        const res = await fetch(filePath);
+        if (!res.ok) {
+            alert('Receipt file not found.');
+            return;
+        }
+        const text = await res.text();
+
+        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        // Use monospaced for alignment
+        doc.setFont('courier', 'normal');
+        doc.setFontSize(10);
+
+        const margin = 36; // 0.5in
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const maxWidth = pageWidth - margin * 2;
+
+        const lines = doc.splitTextToSize(text, maxWidth);
+        let y = margin;
+        for (const line of lines) {
+            if (y > pageHeight - margin) {
+                doc.addPage();
+                y = margin;
+            }
+            doc.text(line as string, margin, y);
+            y += 14; // line height
+        }
+
+        doc.save(`${suggestedName}.pdf`);
+    })();
 }
 
 export default function ReceiptsIndex() {
@@ -159,6 +194,18 @@ export default function ReceiptsIndex() {
                                                             }}
                                                         >
                                                             Download TXT
+                                                        </Button>
+                                                        <Button
+                                                            variant="default"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                downloadTxtAsPdf(
+                                                                    `/${receipt.file_path}`,
+                                                                    `receipt-${receipt.si_number}-${receipt.branch_name}-${receipt.type || 'general'}`
+                                                                )
+                                                            }
+                                                        >
+                                                            Download PDF
                                                         </Button>
                                                     </div>
                                                 </CardContent>
