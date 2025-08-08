@@ -119,7 +119,7 @@ export default function ReceiptsIndex() {
                                                         <Button 
                                                             variant="outline" 
                                                             size="sm"
-                                                            onClick={() => window.open(`/storage/${receipt.file_path}`, '_blank')}
+                                                            onClick={() => window.open(`/${receipt.file_path}`, '_blank')}
                                                         >
                                                             View Receipt
                                                         </Button>
@@ -128,7 +128,7 @@ export default function ReceiptsIndex() {
                                                             size="sm"
                                                             onClick={async () => {
                                                                 try {
-                                                                    const response = await fetch(`/storage/${receipt.file_path}`);
+                                                                    const response = await fetch(`/${receipt.file_path}`);
                                                                     
                                                                     if (response.ok) {
                                                                         const contentType = response.headers.get('content-type');

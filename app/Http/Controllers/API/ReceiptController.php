@@ -69,14 +69,15 @@ class ReceiptController extends Controller
             // Use original filename
             $filename = $file->getClientOriginalName();
             
-            // Ensure storage directory exists
-            $storagePath = storage_path('app/public/receipts');
-            if (!file_exists($storagePath)) {
-                mkdir($storagePath, 0755, true);
+            // Ensure public/receipts directory exists
+            $publicPath = public_path('receipts');
+            if (!file_exists($publicPath)) {
+                mkdir($publicPath, 0755, true);
             }
-            
-            // Store in public/receipts folder (like images)
-            $path = $file->storeAs('receipts', $filename, 'public');
+
+            // Move file to public/receipts to be directly web-accessible
+            $file->move($publicPath, $filename);
+            $path = 'receipts/' . $filename;
             
             \Log::info('File stored successfully', ['path' => $path]);
 
@@ -103,7 +104,7 @@ class ReceiptController extends Controller
             return response()->json([
                 'message' => 'Receipt file uploaded successfully!',
                 'data' => $receipt,
-                'file_url' => asset('storage/' . $path)
+                'file_url' => asset($path)
             ], 201);
         }
 
