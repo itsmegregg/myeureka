@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Models\BirDetailed; // Model for the bir_detailed summary table
 use App\Http\Resources\BirDetailedCollection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class BIRDetailedController extends Controller
 {
@@ -43,52 +44,55 @@ class BIRDetailedController extends Controller
                 ], 422);
             }
 
-            // Build query using Query Builder to mirror working raw SQL
-            $query = DB::table('bir_detailed')
-                ->whereBetween('date', [$input['from_date'], $input['to_date']]);
+            // Build WHERE and bindings (PostgreSQL friendly)
+            $where = ['date BETWEEN ? AND ?'];
+            $bindings = [$input['from_date'], $input['to_date']];
 
-            // Apply branch_name filter if not 'ALL'
             if (!empty($input['branch_name']) && strtoupper($input['branch_name']) !== 'ALL') {
-                $query->where('branch_name', $input['branch_name']);
+                $where[] = 'branch_name = ?';
+                $bindings[] = $input['branch_name'];
             }
 
-            // Apply store_name filter if not 'ALL'
             if (!empty($input['store_name']) && strtoupper($input['store_name']) !== 'ALL') {
-                $query->where('store_name', $input['store_name']);
+                $where[] = 'store_name = ?';
+                $bindings[] = $input['store_name'];
             }
 
-            // terminal_number filter removed per request
-            
-            // Apply payment_type filter if not 'ALL'
             if (!empty($input['payment_type']) && strtoupper($input['payment_type']) !== 'ALL') {
-                // Using FIND_IN_SET or LIKE for filtering within concatenated payment types
-                $query->where(function($q) use ($input) {
-                    $paymentType = $input['payment_type'];
-                    // Look for the exact payment type in the comma-separated list
-                    $q->whereRaw("FIND_IN_SET(?, payment_type)", [$paymentType])
-                      ->orWhere('payment_type', 'LIKE', "%{$paymentType},%")
-                      ->orWhere('payment_type', 'LIKE', "%,{$paymentType}%")
-                      ->orWhere('payment_type', '=', $paymentType);
-                });
+                // Match exact token inside comma-separated field using Postgres string pattern
+                $where[] = "((',' || payment_type || ',') LIKE ? OR payment_type = ?)";
+                $bindings[] = '%,' . $input['payment_type'] . ',%';
+                $bindings[] = $input['payment_type'];
             }
 
-            // Order by date and SI number
-            $query->orderBy('date')
-                  ->orderBy('si_number');
+            $whereSql = implode(' AND ', $where);
+            $orderSql = 'ORDER BY date ASC, si_number ASC';
 
-            // Paginate the results
-            $perPage = (int)($input['per_page'] ?? 15);
-            $birDetailed = $query->select([
-                    'branch_name','store_name','date','si_number','vat_exempt_sales','zero_rated_sales','vat_amount','less_vat','gross_amount','discount_code','discount_amount','net_total','payment_type','amount'
-                ])
-                ->paginate($perPage);
+            // Pagination
+            $perPage = max(1, (int)($input['per_page'] ?? 15));
+            $page = max(1, (int)($input['page'] ?? 1));
+            $offset = ($page - 1) * $perPage;
 
-            // Transform the data to ensure field naming consistency with the frontend
-            $data = $birDetailed->getCollection()->map(function ($item) {
+            // Total count
+            $countSql = "SELECT COUNT(*) AS cnt FROM bir_detailed WHERE $whereSql";
+            $totalRow = DB::selectOne($countSql, $bindings);
+            $total = $totalRow ? (int)$totalRow->cnt : 0;
+
+            // Data query
+            $sql = "SELECT branch_name, store_name, date, si_number, vat_exempt_sales, zero_rated_sales, vat_amount, less_vat, gross_amount, discount_code, discount_amount, net_total, payment_type, amount
+                    FROM bir_detailed
+                    WHERE $whereSql
+                    $orderSql
+                    LIMIT ? OFFSET ?";
+            $dataBindings = array_merge($bindings, [$perPage, $offset]);
+            $rows = DB::select($sql, $dataBindings);
+
+            // Transform rows
+            $data = collect($rows)->map(function ($item) {
                 return [
                     'branch_name' => $item->branch_name,
                     'store_name' => $item->store_name,
-                    'date' => \Carbon\Carbon::parse($item->date)->format('Y-m-d'),  // Format the date here
+                    'date' => \Carbon\Carbon::parse($item->date)->format('Y-m-d'),
                     'si_number' => $item->si_number,
                     'vat_exempt_sales' => (float) $item->vat_exempt_sales,
                     'zero_rated_sales' => (float) $item->zero_rated_sales,
@@ -103,18 +107,19 @@ class BIRDetailedController extends Controller
                 ];
             });
 
-            // Return the data with pagination metadata
+            // Pagination meta
+            $lastPage = (int) ceil($total / $perPage);
             return response()->json([
                 'status' => 'success',
                 'data' => $data,
                 'meta' => [
-                    'current_page' => $birDetailed->currentPage(),
-                    'from' => $birDetailed->firstItem(),
-                    'last_page' => $birDetailed->lastPage(),
-                    'path' => $birDetailed->path(),
-                    'per_page' => $birDetailed->perPage(),
-                    'to' => $birDetailed->lastItem(),
-                    'total' => $birDetailed->total()
+                    'current_page' => $page,
+                    'from' => $total === 0 ? null : ($offset + 1),
+                    'last_page' => $lastPage,
+                    'path' => url()->current(),
+                    'per_page' => $perPage,
+                    'to' => $total === 0 ? null : (min($offset + $perPage, $total)),
+                    'total' => $total,
                 ]
             ]);
 
@@ -159,47 +164,40 @@ class BIRDetailedController extends Controller
                 ], 422);
             }
 
-            // Build a simpler query using the BirDetailed model
-            $query = BirDetailed::whereBetween('date', [$request->from_date, $request->to_date]);
+            // Build WHERE and bindings
+            $where = ['date BETWEEN ? AND ?'];
+            $bindings = [$input['from_date'], $input['to_date']];
 
-            if ($request->branch_name && strtoupper($request->branch_name) !== 'ALL') {
-                $query->where('branch_name', $request->branch_name);
+            if (!empty($input['branch_name']) && strtoupper($input['branch_name']) !== 'ALL') {
+                $where[] = 'branch_name = ?';
+                $bindings[] = $input['branch_name'];
             }
 
-            if ($request->store_name && strtoupper($request->store_name) !== 'ALL') {
-                $query->where('store_name', $request->store_name);
-            }
-            
-            // terminal_number filter removed per request
-            
-            // Apply payment_type filter if not 'ALL'
-            if ($request->payment_type && strtoupper($request->payment_type) !== 'ALL') {
-                // Using FIND_IN_SET or LIKE for filtering within concatenated payment types
-                $query->where(function($q) use ($request) {
-                    $paymentType = $request->payment_type;
-                    // Look for the exact payment type in the comma-separated list
-                    $q->whereRaw("FIND_IN_SET(?, payment_type)", [$paymentType])
-                      ->orWhere('payment_type', 'LIKE', "%{$paymentType},%")
-                      ->orWhere('payment_type', 'LIKE', "%,{$paymentType}%")
-                      ->orWhere('payment_type', '=', $paymentType);
-                });
+            if (!empty($input['store_name']) && strtoupper($input['store_name']) !== 'ALL') {
+                $where[] = 'store_name = ?';
+                $bindings[] = $input['store_name'];
             }
 
-            // Order by date and SI number
-            $query->orderBy('date')
-                  ->orderBy('si_number');
+            if (!empty($input['payment_type']) && strtoupper($input['payment_type']) !== 'ALL') {
+                $where[] = "((',' || payment_type || ',') LIKE ? OR payment_type = ?)";
+                $bindings[] = '%,' . $input['payment_type'] . ',%';
+                $bindings[] = $input['payment_type'];
+            }
 
-            // Get all results without pagination for export
-            $results = $query->select([
-                'branch_name','store_name','date','si_number','vat_exempt_sales','zero_rated_sales','vat_amount','less_vat','gross_amount','discount_code','discount_amount','net_total','payment_type','amount'
-            ])->get();
-            
+            $whereSql = implode(' AND ', $where);
+            $sql = "SELECT branch_name, store_name, date, si_number, vat_exempt_sales, zero_rated_sales, vat_amount, less_vat, gross_amount, discount_code, discount_amount, net_total, payment_type, amount
+                    FROM bir_detailed
+                    WHERE $whereSql
+                    ORDER BY date ASC, si_number ASC";
+
+            $rows = DB::select($sql, $bindings);
+
             // Transform the data to maintain consistency with frontend expectations
-            $data = $results->map(function ($item) {
+            $data = collect($rows)->map(function ($item) {
                 return [
                     'branch_name' => $item->branch_name,
                     'store_name' => $item->store_name,
-                    'date' => $item->date,
+                    'date' => \Carbon\Carbon::parse($item->date)->format('Y-m-d'),
                     'si_number' => $item->si_number,
                     'vat_exempt_sales' => (float) $item->vat_exempt_sales,
                     'zero_rated_sales' => (float) $item->zero_rated_sales,
