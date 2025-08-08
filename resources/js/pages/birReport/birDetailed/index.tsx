@@ -20,8 +20,6 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { IconFileTypeXls, IconFileTypePdf } from '@tabler/icons-react';
-import TerminalSelect from '@/components/public-components/terminal-select';
-import { useTerminalStore } from '@/store/useTerminal';
 import PaymentTypeSelect from '@/components/public-components/paymentType-select';
 import { usePaymentTypeStore } from '@/store/usePaymentType';
 // jspdf-autotable not used directly
@@ -30,7 +28,6 @@ import { usePaymentTypeStore } from '@/store/usePaymentType';
 interface BirDetailedData {
     branch_name: string;
     store_name: string;
-    terminal_number: string;
     date: string;
     si_number: string;
     vat_exempt_sales: number;
@@ -63,7 +60,6 @@ export default function BirDetailed() {
     const { selectedBranch } = useBranchStore();
     const { selectedStore } = useStore();
     const { dateRange: selectedDateRange } = useDateRange();
-    const { selectedTerminal } = useTerminalStore();
     const { selectedPaymentType } = usePaymentTypeStore();
     const [birData, setBirData] = useState<BirDetailedData[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
@@ -80,7 +76,6 @@ export default function BirDetailed() {
                 from_date: selectedDateRange.from ? format(selectedDateRange.from, 'yyyy-MM-dd') : undefined,
                 to_date: selectedDateRange.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : undefined,
                 store_name: selectedStore ?? 'ALL',
-                terminal_number: selectedTerminal,
                 payment_type: selectedPaymentType,
                 page: page,
                 per_page: 15
@@ -97,7 +92,7 @@ export default function BirDetailed() {
         } finally {
             setLoading(false);
         }
-    }, [selectedDateRange, selectedBranch, selectedStore, selectedTerminal, selectedPaymentType]);
+    }, [selectedDateRange, selectedBranch, selectedStore, selectedPaymentType]);
 
 
     const handlePageChange = (page: number) => {
@@ -116,7 +111,6 @@ export default function BirDetailed() {
                 from_date: selectedDateRange.from ? format(selectedDateRange.from, 'yyyy-MM-dd') : undefined,
                 to_date: selectedDateRange.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : undefined,
                 store_name: selectedStore ?? 'ALL',
-                terminal_number: selectedTerminal,
                 payment_type: selectedPaymentType,
             };
             const response = await axios.get('/api/bir/detailed-report/export', { params });
@@ -128,7 +122,7 @@ export default function BirDetailed() {
             setError('Failed to load all data for export. Please try again.');
             return [];
         }
-    }, [selectedDateRange, selectedBranch, selectedStore, selectedTerminal]);
+    }, [selectedDateRange, selectedBranch, selectedStore]);
 
     const handleExportExcel = async () => {
         setLoading(true);
@@ -173,9 +167,7 @@ export default function BirDetailed() {
                     yPos += 6;
                 }
                 
-                // Always show terminal information, even if it's 'All Terminals'
-                doc.text(`Terminal: ${selectedTerminal || 'All Terminals'}`, 14, yPos);
-                yPos += 6;
+                // Terminal information removed per request
                 
                 // Prepare table data
                 const tableData = allData.map((data: BirDetailedData) => [
@@ -191,7 +183,7 @@ export default function BirDetailed() {
                 // Generate the table using autoTable
                 autoTable(doc, {
                     startY: yPos,
-                    head: [['Branch', 'Store', 'Terminal', 'Date', 'SI No.', 'VAT Exempt', 'VAT Amount', 'Net Total']],
+                    head: [['Branch', 'Store', 'Date', 'SI No.', 'VAT Exempt', 'VAT Amount', 'Net Total']],
                     body: tableData,
                     theme: 'grid',
                     styles: { fontSize: 8 },
@@ -236,7 +228,7 @@ export default function BirDetailed() {
                                     <div className="flex flex-wrap items-end gap-2">
                                         <BranchSelect />
                                         <DateRangePickernew />
-                                        <TerminalSelect />
+                                        {/* TerminalSelect removed per request */}
                                         <PaymentTypeSelect />
                                         <Button onClick={handleSearch} disabled={loading}>
                                             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
@@ -279,7 +271,7 @@ export default function BirDetailed() {
                                                 <TableRow>
                                                     <TableHead>Branch Name</TableHead>
                                                     <TableHead>Store Name</TableHead>
-                                                    <TableHead>Terminal Number</TableHead>
+                                                    {/* Terminal Number column removed */}
                                                     <TableHead>Date</TableHead>
                                                     <TableHead>SI Number</TableHead>
                                                     <TableHead>VAT Exempt Sales</TableHead>
@@ -319,7 +311,7 @@ export default function BirDetailed() {
                                                         <TableRow key={index}>
                                                             <TableCell>{data.branch_name}</TableCell>
                                                             <TableCell>{data.store_name}</TableCell>
-                                                            <TableCell>{data.terminal_number}</TableCell>
+                                                            {/* Terminal Number cell removed */}
                                                             <TableCell>{data.date}</TableCell>
                                                             <TableCell>{data.si_number}</TableCell>
                                                             <TableCell>{data.vat_exempt_sales.toFixed(2)}</TableCell>

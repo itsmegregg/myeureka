@@ -17,7 +17,6 @@ class BIRDetailedController extends Controller
             $validator = Validator::make($request->all(), [
                 'branch_name' => 'nullable|string',
                 'store_name' => 'nullable|string',
-                'terminal_number' => 'nullable|string',
                 'payment_type' => 'nullable|string',
                 'from_date' => 'required|date',
                 'to_date' => 'required|date',
@@ -46,10 +45,7 @@ class BIRDetailedController extends Controller
                 $query->where('store_name', $request->store_name);
             }
 
-            // Apply terminal_number filter if not 'ALL'
-            if ($request->terminal_number && strtoupper($request->terminal_number) !== 'ALL') {
-                $query->where('terminal_number', $request->terminal_number);
-            }
+            // terminal_number filter removed per request
             
             // Apply payment_type filter if not 'ALL'
             if ($request->payment_type && strtoupper($request->payment_type) !== 'ALL') {
@@ -77,7 +73,6 @@ class BIRDetailedController extends Controller
                 return [
                     'branch_name' => $item->branch_name,
                     'store_name' => $item->store_name,
-                    'terminal_number' => $item->terminal_number,
                     'date' => \Carbon\Carbon::parse($item->date)->format('Y-m-d'),  // Format the date here
                     'si_number' => $item->si_number,
                     'vat_exempt_sales' => (float) $item->vat_exempt_sales,
@@ -122,7 +117,6 @@ class BIRDetailedController extends Controller
             $validator = Validator::make($request->all(), [
                 'branch_name' => 'nullable|string',
                 'store_name' => 'nullable|string',
-                'terminal_number' => 'nullable|string',
                 'payment_type' => 'nullable|string',
                 'from_date' => 'required|date',
                 'to_date' => 'required|date',
@@ -147,10 +141,7 @@ class BIRDetailedController extends Controller
                 $query->where('store_name', $request->store_name);
             }
             
-            // Apply terminal_number filter if not 'ALL'
-            if ($request->terminal_number && strtoupper($request->terminal_number) !== 'ALL') {
-                $query->where('terminal_number', $request->terminal_number);
-            }
+            // terminal_number filter removed per request
             
             // Apply payment_type filter if not 'ALL'
             if ($request->payment_type && strtoupper($request->payment_type) !== 'ALL') {
