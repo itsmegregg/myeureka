@@ -120,9 +120,7 @@ class ReceiptController extends Controller
         ], 500);
     }
 }
-    /**
-     * Display the specified resource.
-     */
+    
     public function show(Receipt $receipt)
     {
         return response()->json([
@@ -132,9 +130,6 @@ class ReceiptController extends Controller
 
 
     
-    /**
-     * Remove the specified resource from storage.
-     */
     public function searchViaSiNumber(Request $request)
     {
         $validator = Validator::make($request->all(), [
