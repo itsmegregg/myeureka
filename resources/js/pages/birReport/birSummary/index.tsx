@@ -20,15 +20,11 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { IconFileTypeXls, IconFileTypePdf } from '@tabler/icons-react';
-import TerminalSelect from "@/components/public-components/terminal-select";
-import { useTerminalStore } from "@/store/useTerminal";
-
 
 export default function BirSummary() {
     const { selectedBranch } = useBranchStore();
     const { selectedStore } = useStore();
     const { dateRange: selectedDateRange } = useDateRange();
-    const { selectedTerminal } = useTerminalStore();
 
     const [birSummaryData, setBirSummaryData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -43,7 +39,7 @@ export default function BirSummary() {
                               from_date: selectedDateRange.from ? format(selectedDateRange.from, 'yyyy-MM-dd') : undefined,
                               to_date: selectedDateRange.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : undefined,
                               store_name: selectedStore ?? 'ALL',
-                              terminal_number: selectedTerminal,
+                              
                 },
             });
             setBirSummaryData(response.data.data);
@@ -55,6 +51,36 @@ export default function BirSummary() {
         }
     };
 
+    // Helper: compute ordered headers (fixed first, then dynamic discounts)
+    function getOrderedHeaders(rows: any[]): string[] {
+        const fixed: string[] = [
+            'Branch',
+            'Concept',
+            'Date',
+            'Z Counter',
+            'SI First',
+            'SI Last',
+            'Beginning',
+            'Ending',
+            'Net Amount',
+            'Service charge',
+            'Total No of Guest',
+            'Returns',
+            'Voids',
+            'Gross',
+            'Vatable',
+            'VAT Amount',
+            'VAT Exempt',
+            'Zero Rated',
+            'Less VAT',
+        ];
+        const fixedSet = new Set(fixed);
+        const dynamic: string[] = rows.length > 0
+            ? Object.keys(rows[0]).filter((k) => !fixedSet.has(k))
+            : [];
+        return [...fixed, ...dynamic];
+    }
+
     // New function to fetch all data for export
     const fetchAllBirSummaryData = async () => {
         setExporting(true);
@@ -65,7 +91,6 @@ export default function BirSummary() {
                     from_date: selectedDateRange.from ? format(selectedDateRange.from, 'yyyy-MM-dd') : undefined,
                     to_date: selectedDateRange.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : undefined,
                     store_name: selectedStore ?? 'ALL',
-                    terminal_number: selectedTerminal,
                 },
             });
             return response.data.data;
@@ -92,18 +117,12 @@ export default function BirSummary() {
                 return;
             }
             
-            // Format data for export ensuring column order matches headers
-            const formattedData = dataToExport.map(row => {
-                // Create a new object with properties in the exact order of headers
+            const headers = getOrderedHeaders(dataToExport);
+            // Format data for export ensuring column order matches headers exactly
+            const formattedData = dataToExport.map((row: any) => {
                 const orderedRow: Record<string, any> = {};
-                headers.forEach(header => {
-                    // Find the matching value for this header in the row
-                    // This assumes the property names in row match or are similar to headers
-                    const matchingKey = Object.keys(row).find(key => 
-                        key.toLowerCase().includes(header.toLowerCase()) || 
-                        header.toLowerCase().includes(key.toLowerCase()));
-                    
-                    orderedRow[header] = matchingKey ? row[matchingKey] : null;
+                headers.forEach((h) => {
+                    orderedRow[h] = h in row ? row[h] : null;
                 });
                 return orderedRow;
             });
@@ -118,8 +137,7 @@ export default function BirSummary() {
             const toDate = selectedDateRange?.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : fromDate;
             const branchInfo = selectedBranch?.branch_name ? `_${selectedBranch.branch_name}` : '';
             const storeInfo = selectedStore ? `_${selectedStore}` : '';
-            const terminalInfo = selectedTerminal ? `_Terminal${selectedTerminal}` : '';
-            const fileName = `BIR_Summary_Report${branchInfo}${storeInfo}${terminalInfo}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
+            const fileName = `BIR_Summary_Report${branchInfo}${storeInfo}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
             
             XLSX.writeFile(wb, fileName);
         } catch (error) {
@@ -171,23 +189,10 @@ export default function BirSummary() {
                 yPos += 6;
             }
             
-            // Always show terminal information, even if it's 'All Terminals'
-            doc.text(`Terminal: ${selectedTerminal || 'All Terminals'}`, 14, yPos);
-            yPos += 6;
-            
-            // Prepare table data
+            const headers = getOrderedHeaders(dataToExport);
+            // Prepare table data in exact header order
             const tableData = dataToExport.map((row: any) => {
-                // For each row, extract values in the exact order matching headers
-                return headers.map(header => {
-                    // Find the matching key in this row object
-                    const matchingKey = Object.keys(row).find(key => 
-                        key.toLowerCase().includes(header.toLowerCase()) || 
-                        header.toLowerCase().includes(key.toLowerCase()));
-                        
-                    // Get the value or use '-' for null/undefined
-                    const value = matchingKey ? (row[matchingKey] !== null ? row[matchingKey] : '-') : '-';
-                    return value;
-                });
+                return headers.map((h) => (row[h] !== undefined && row[h] !== null) ? row[h] : '-');
             });
             
             // Generate the table using autoTable
@@ -223,14 +228,8 @@ export default function BirSummary() {
         }
     };
 
-
-    const headers = [
-        "Branch", "Concept", "Terminal", "Date", "Z Counter", "SI First", "SI Last",
-        "Beginning", "Ending", "Net Amount", "Service Charge", "PWD", "Senior",
-        "NATIONAL ATHLETES", "SOLO PARENT", "VALOR", "OTHER DISCOUNTS",
-        "Returns", "Voids", "Gross", "Vatable", "VAT Amount", "VAT Exempt",
-        "Zero Rated", "Less VAT"
-    ];
+    // Runtime headers used for table and exports
+    const headers = getOrderedHeaders(birSummaryData);
 
     return (
         <AppLayout>
@@ -245,7 +244,6 @@ export default function BirSummary() {
                                     <div className="flex flex-wrap items-end gap-2">
                                         <BranchSelect />
                                         <DateRangePickernew />
-                                        <TerminalSelect />
                                         <Button onClick={handleSearch} disabled={loading}>
                                             {loading ? (
                                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -307,8 +305,8 @@ export default function BirSummary() {
                                             ) : birSummaryData.length > 0 ? (
                                                 birSummaryData.map((row, rowIndex) => (
                                                     <TableRow key={rowIndex}>
-                                                        {Object.values(row).map((cell: any, cellIndex) => (
-                                                            <TableCell key={cellIndex} className="whitespace-nowrap">{cell !== null ? cell : '-'}</TableCell>
+                                                        {headers.map((h, cellIndex) => (
+                                                            <TableCell key={cellIndex} className="whitespace-nowrap">{row[h] !== null && row[h] !== undefined ? row[h] : '-'}</TableCell>
                                                         ))}
                                                     </TableRow>
                                                 ))
