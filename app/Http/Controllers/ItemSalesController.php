@@ -11,7 +11,7 @@ use App\Http\Resources\ProductMixItemResource;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Header;
-use App\Models\ItemDetails;
+use App\Models\ItemDetail;
 use App\Models\Product;
 use App\Models\Store;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -33,11 +33,11 @@ class ItemSalesController extends Controller
         $perPage = $request->input('per_page', 15);
         
         // Main query for product mix
-        $productMix = ItemDetails::select(
+        $productMix = ItemDetail::select(
             'item_details.product_code',
-            'product.product_description',
-            DB::raw('SUM(item_details.qty) as total_quantity'),
-            DB::raw('SUM(item_details.net_total) as total_net_sales')
+            'products.product_description',
+            DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
+            DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as total_net_sales')
         )
         ->join('header', function ($join) use ($terminal) {
             $join->on('item_details.si_number', '=', 'header.si_number')
@@ -45,8 +45,8 @@ class ItemSalesController extends Controller
                  ->on('item_details.branch_name', '=', 'header.branch_name')
                  ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
         })
-        ->leftJoin('product', function($join) {
-            $join->on('item_details.product_code', '=', 'product.product_code');
+        ->leftJoin('products', function($join) {
+            $join->on('item_details.product_code', '=', 'products.product_code');
         })
         ->whereBetween('header.date', [$startDate, $endDate]);
 
@@ -63,7 +63,7 @@ class ItemSalesController extends Controller
         }
 
 
-        $productMix->groupBy('item_details.product_code', 'product.product_description')
+        $productMix->groupBy('item_details.product_code', 'products.product_description')
                    ->orderBy('total_quantity', 'desc');
 
         // Paginate the results with smaller page size
@@ -89,11 +89,11 @@ class ItemSalesController extends Controller
         // Fetch combo items for each combo product
         $results->getCollection()->transform(function ($item) use ($startDate, $endDate, $branch, $store, $terminal) {
             // Check if this is a combo product by looking for items that reference it as combo_main_code
-            $comboItems = ItemDetails::select(
+            $comboItems = ItemDetail::select(
                 'item_details.product_code',
-                'product.product_description',
-                DB::raw('SUM(item_details.qty) as total_quantity'),
-                DB::raw('SUM(item_details.net_total) as net_sales')
+                'products.product_description',
+                DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
+                DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
             )
             ->join('header', function ($join) use ($terminal) {
                 $join->on('item_details.si_number', '=', 'header.si_number')
@@ -101,8 +101,8 @@ class ItemSalesController extends Controller
                      ->on('item_details.branch_name', '=', 'header.branch_name')
                      ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
             })
-            ->leftJoin('product', function($join) {
-                $join->on('item_details.product_code', '=', 'product.product_code');
+            ->leftJoin('products', function($join) {
+                $join->on('item_details.product_code', '=', 'products.product_code');
             })
             ->where('item_details.combo_header', $item->product_code)
             ->whereBetween('header.date', [$startDate, $endDate]);
@@ -117,7 +117,7 @@ class ItemSalesController extends Controller
 
 
             
-            $comboItems = $comboItems->groupBy('item_details.product_code', 'product.product_description')
+            $comboItems = $comboItems->groupBy('item_details.product_code', 'products.product_description')
                                     ->get();
             
             if ($comboItems->isNotEmpty()) {
@@ -191,17 +191,15 @@ class ItemSalesController extends Controller
 {
     // Use the summary table for main data
     $query = \App\Models\ItemDetailsDailySummary::select([ 
-        'category.category_code',
-        'category.category_description',
+        'categories.category_code',
+        'categories.category_description',
         'item_details_daily_summary.product_code',
-        'product.product_description',
+        'products.product_description',
         DB::raw('SUM(item_details_daily_summary.quantity) as quantity'),
         DB::raw('SUM(item_details_daily_summary.net_sales) as net_sales')
     ])
-    ->join('product', function($join) {
-        $join->on(DB::raw('item_details_daily_summary.product_code COLLATE utf8mb4_unicode_ci'), '=', 'product.product_code');
-    })
-    ->join('category', 'product.category_code', '=', 'category.category_code')
+    ->join('products', 'item_details_daily_summary.product_code', '=', 'products.product_code')
+    ->join('categories', 'products.category_code', '=', 'categories.category_code')
     ->whereBetween('item_details_daily_summary.date', [$startDate, $endDate])
     ->when($store !== 'ALL', function ($q) use ($store) {
         return $q->where('item_details_daily_summary.store_name', $store);
@@ -210,14 +208,14 @@ class ItemSalesController extends Controller
         return $q->where('item_details_daily_summary.branch_name', $branch);
     })
     ->when($category !== 'ALL', function ($q) use ($category) {
-        return $q->where('product.category_code', $category);
+        return $q->where('products.category_code', $category);
     })
     // Note: We need to handle terminal filtering in the combo items section
     ->groupBy([ 
-        'category.category_code',
-        'category.category_description',
+        'categories.category_code',
+        'categories.category_description',
         'item_details_daily_summary.product_code',
-        'product.product_description'
+        'products.product_description'
     ])
     ->orderBy('quantity', 'desc'); // Sort by quantity descending
 
@@ -256,11 +254,11 @@ class ItemSalesController extends Controller
 
         // For combo items, we still need to query the original tables
         // This is because combo item relationships aren't in the summary table
-        $comboItems = ItemDetails::select(
+        $comboItems = ItemDetail::select(
             'item_details.product_code',
-            'product.product_description as description',
-            DB::raw('SUM(item_details.qty) as total_quantity'),
-            DB::raw('SUM(item_details.net_total) as net_sales')
+            'products.product_description as description',
+            DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
+            DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
         )
         ->join('header', function ($join) use ($terminal) {
             $join->on('item_details.si_number', '=', 'header.si_number')
@@ -268,7 +266,7 @@ class ItemSalesController extends Controller
                  ->on('item_details.branch_name', '=', 'header.branch_name')
                  ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
         })
-        ->leftJoin('product', 'item_details.product_code', '=', 'product.product_code')
+        ->leftJoin('products', 'item_details.product_code', '=', 'products.product_code')
         ->where('item_details.combo_header', $item->product_code)
         ->whereBetween('header.date', [$startDate, $endDate]);
         
@@ -280,7 +278,7 @@ class ItemSalesController extends Controller
             $comboItems->where('item_details.branch_name', $branch);
         }
         
-        $comboItems = $comboItems->groupBy('item_details.product_code', 'product.product_description')
+        $comboItems = $comboItems->groupBy('item_details.product_code', 'products.product_description')
                                 ->get();
         
         if ($comboItems->isNotEmpty()) {
@@ -314,13 +312,13 @@ class ItemSalesController extends Controller
         $store = strtoupper($request->input('concept_id', 'ALL')); // Changed from store_id to concept_id
 
         try {
-            $query = ItemDetails::select([
-                'category.category_code',
-                'category.category_description',
+            $query = ItemDetail::select([
+                'categories.category_code',
+                'categories.category_description',
                 'item_details.product_code',
-                'product.product_description',
-                DB::raw('SUM(item_details.qty) as quantity'),
-                DB::raw('SUM(item_details.net_total) as net_sales')
+                'products.product_description',
+                DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as quantity'),
+                DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
             ])
             ->join('header', function ($join) use ($terminal) {
                 $join->on('item_details.si_number', '=', 'header.si_number')
@@ -328,8 +326,8 @@ class ItemSalesController extends Controller
                      ->on('item_details.branch_name', '=', 'header.branch_name')
                      ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
             })
-            ->join('product', 'item_details.product_code', '=', 'product.product_code')
-            ->join('category', 'product.category_code', '=', 'category.category_code')
+            ->join('products', 'item_details.product_code', '=', 'products.product_code')
+            ->join('categories', 'products.category_code', '=', 'categories.category_code')
             ->whereBetween('header.date', [$startDate, $endDate])
             ->when($store !== 'ALL', function ($q) use ($store) {
                 return $q->where('item_details.store_name', $store);
@@ -338,13 +336,13 @@ class ItemSalesController extends Controller
                 return $q->where('item_details.branch_name', $branch);
             })
             ->when($category !== 'ALL', function ($q) use ($category) {
-                return $q->where('product.category_code', $category);
+                return $q->where('products.category_code', $category);
             })
             ->groupBy(
-                'category.category_code',
-                'category.category_description',
+                'categories.category_code',
+                'categories.category_description',
                 'item_details.product_code',
-                'product.product_description'
+                'products.product_description'
             );
 
             $results = $query->get();
@@ -389,11 +387,11 @@ class ItemSalesController extends Controller
                 ];
 
                 // Fetch combo items for this product
-                $comboItems = ItemDetails::select(
+                $comboItems = ItemDetail::select(
                     'item_details.product_code',
-                    'product.product_description as description',
-                    DB::raw('SUM(item_details.qty) as total_quantity'),
-                    DB::raw('SUM(item_details.net_total) as net_sales')
+                    'products.product_description as description',
+                    DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
+                    DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
                 )
                 ->join('header', function ($join) use ($terminal) {
                     $join->on('item_details.si_number', '=', 'header.si_number')
@@ -401,7 +399,7 @@ class ItemSalesController extends Controller
                          ->on('item_details.branch_name', '=', 'header.branch_name')
                          ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
                 })
-                ->leftJoin('product', 'item_details.product_code', '=', 'product.product_code')
+                ->leftJoin('products', 'item_details.product_code', '=', 'products.product_code')
                 ->where('item_details.combo_header', $item->product_code)
                 ->whereBetween('header.date', [$startDate, $endDate]);
                 
@@ -413,7 +411,7 @@ class ItemSalesController extends Controller
                     $comboItems->where('item_details.branch_name', $branch);
                 }
                 
-                $comboItems = $comboItems->groupBy('item_details.product_code', 'product.product_description')
+                $comboItems = $comboItems->groupBy('item_details.product_code', 'products.product_description')
                                         ->get();
                 
                 if ($comboItems->isNotEmpty()) {
@@ -468,17 +466,17 @@ class ItemSalesController extends Controller
             
             $perPage = $request->input('per_page', 15); // Default to 15 per page
             
-            $query = ItemDetails::query()
+            $query = ItemDetail::query()
                 ->select(
                     DB::raw('DATE(header.date) as transaction_date'),
-                    DB::raw('ROUND(SUM(senior_disc), 2) as senior_disc'),
-                    DB::raw('ROUND(SUM(pwd_disc), 2) as pwd_disc'),
-                    DB::raw('ROUND(SUM(other_disc), 2) as other_disc'),
-                    DB::raw('ROUND(SUM(open_disc), 2) as open_disc'),
-                    DB::raw('ROUND(SUM(employee_disc), 2) as employee_disc'),
-                    DB::raw('ROUND(SUM(vip_disc), 2) as vip_disc'),
-                    DB::raw('ROUND(SUM(promo), 2) as promo'),
-                    DB::raw('ROUND(SUM(free), 2) as free')
+                    DB::raw('ROUND(SUM(CAST(senior_disc AS NUMERIC)), 2) as senior_disc'),
+                    DB::raw('ROUND(SUM(CAST(pwd_disc AS NUMERIC)), 2) as pwd_disc'),
+                    DB::raw('ROUND(SUM(CAST(other_disc AS NUMERIC)), 2) as other_disc'),
+                    DB::raw('ROUND(SUM(CAST(open_disc AS NUMERIC)), 2) as open_disc'),
+                    DB::raw('ROUND(SUM(CAST(employee_disc AS NUMERIC)), 2) as employee_disc'),
+                    DB::raw('ROUND(SUM(CAST(vip_disc AS NUMERIC)), 2) as vip_disc'),
+                    DB::raw('ROUND(SUM(CAST(promo AS NUMERIC)), 2) as promo'),
+                    DB::raw('ROUND(SUM(CAST(free AS NUMERIC)), 2) as free')
                 )
                 ->join('header', function ($join) {
                     $join->on('item_details.si_number', '=', 'header.si_number')
@@ -541,19 +539,19 @@ class ItemSalesController extends Controller
         $store = strtoupper($request->input('store_name', 'ALL')); // Changed from store_id to concept_id
         
         // Main query for product mix without pagination - using same structure as ProductMix
-        $productMix = ItemDetails::select(
+        $productMix = ItemDetail::select(
             'item_details.product_code',
-            'product.product_description',
-            DB::raw('SUM(item_details.qty) as total_quantity'),
-            DB::raw('SUM(item_details.net_total) as total_net_sales')
+            'products.product_description',
+            DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
+            DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as total_net_sales')
         )
         ->join('header', function ($join) {
             $join->on('item_details.si_number', '=', 'header.si_number')
                  ->on('item_details.terminal_number', '=', 'header.terminal_number')
                  ->on('item_details.branch_name', '=', 'header.branch_name');
         })
-        ->leftJoin('product', function($join) {
-            $join->on('item_details.product_code', '=', 'product.product_code');
+        ->leftJoin('products', function($join) {
+            $join->on('item_details.product_code', '=', 'products.product_code');
         })
         ->whereBetween('header.date', [$startDate, $endDate]);
 
@@ -573,7 +571,7 @@ class ItemSalesController extends Controller
             $productMix->where('item_details.terminal_number', $terminal);
         }
 
-        $productMix->groupBy('item_details.product_code', 'product.product_description')
+        $productMix->groupBy('item_details.product_code', 'products.product_description')
                    ->orderBy('total_quantity', 'desc');
 
         // Get all results without pagination
@@ -598,19 +596,19 @@ class ItemSalesController extends Controller
         // Fetch combo items for each combo product
         $results = $results->map(function ($item) use ($startDate, $endDate, $branch, $store, $terminal) {
             // Check if this is a combo product by looking for items that reference it as combo_header
-            $comboItems = ItemDetails::select(
+            $comboItems = ItemDetail::select(
                 'item_details.product_code',
-                'product.product_description',
-                DB::raw('SUM(item_details.qty) as total_quantity'),
-                DB::raw('SUM(item_details.net_total) as net_sales')
+                'products.product_description',
+                DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
+                DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
             )
             ->join('header', function ($join) use ($terminal) {
                 $join->on('item_details.si_number', '=', 'header.si_number')
                      ->on('item_details.terminal_number', '=', 'header.terminal_number')
                      ->on('item_details.branch_name', '=', 'header.branch_name');
             })
-            ->leftJoin('product', function($join) {
-                $join->on('item_details.product_code', '=', 'product.product_code');
+            ->leftJoin('products', function($join) {
+                $join->on('item_details.product_code', '=', 'products.product_code');
             })
             ->where('item_details.combo_header', $item->product_code)
             ->whereBetween('header.date', [$startDate, $endDate]);
@@ -627,7 +625,7 @@ class ItemSalesController extends Controller
                 $comboItems->where('item_details.terminal_number', $terminal);
             }
             
-            $comboItems = $comboItems->groupBy('item_details.product_code', 'product.product_description')
+            $comboItems = $comboItems->groupBy('item_details.product_code', 'products.product_description')
                                     ->get();
             
             if ($comboItems->isNotEmpty()) {
