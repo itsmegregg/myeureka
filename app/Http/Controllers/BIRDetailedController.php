@@ -13,13 +13,24 @@ class BIRDetailedController extends Controller
     public function index(Request $request)
     {
         try {
-            // Validate the request
-            $validator = Validator::make($request->all(), [
+            // Normalize inputs
+            $input = [
+                'branch_name' => is_string($request->branch_name) ? trim($request->branch_name) : $request->branch_name,
+                'store_name' => is_string($request->store_name) ? trim($request->store_name) : $request->store_name,
+                'payment_type' => is_string($request->payment_type) ? trim($request->payment_type) : $request->payment_type,
+                'from_date' => $request->from_date,
+                'to_date' => $request->to_date,
+                'per_page' => $request->per_page,
+                'page' => $request->page,
+            ];
+
+            // Validate the request strictly
+            $validator = Validator::make($input, [
                 'branch_name' => 'nullable|string',
                 'store_name' => 'nullable|string',
                 'payment_type' => 'nullable|string',
-                'from_date' => 'required|date',
-                'to_date' => 'required|date',
+                'from_date' => 'required|date_format:Y-m-d',
+                'to_date' => 'required|date_format:Y-m-d',
                 'per_page' => 'nullable|integer|min:1',
                 'page' => 'nullable|integer|min:1'
             ]);
@@ -32,26 +43,27 @@ class BIRDetailedController extends Controller
                 ], 422);
             }
 
-            // Build a simpler query using the BirDetailed model
-            $query = BirDetailed::whereBetween('date', [$request->from_date, $request->to_date]);
+            // Build query using Query Builder to mirror working raw SQL
+            $query = DB::table('bir_detailed')
+                ->whereBetween('date', [$input['from_date'], $input['to_date']]);
 
             // Apply branch_name filter if not 'ALL'
-            if ($request->branch_name && strtoupper($request->branch_name) !== 'ALL') {
-                $query->where('branch_name', $request->branch_name);
+            if (!empty($input['branch_name']) && strtoupper($input['branch_name']) !== 'ALL') {
+                $query->where('branch_name', $input['branch_name']);
             }
 
             // Apply store_name filter if not 'ALL'
-            if ($request->store_name && strtoupper($request->store_name) !== 'ALL') {
-                $query->where('store_name', $request->store_name);
+            if (!empty($input['store_name']) && strtoupper($input['store_name']) !== 'ALL') {
+                $query->where('store_name', $input['store_name']);
             }
 
             // terminal_number filter removed per request
             
             // Apply payment_type filter if not 'ALL'
-            if ($request->payment_type && strtoupper($request->payment_type) !== 'ALL') {
+            if (!empty($input['payment_type']) && strtoupper($input['payment_type']) !== 'ALL') {
                 // Using FIND_IN_SET or LIKE for filtering within concatenated payment types
-                $query->where(function($q) use ($request) {
-                    $paymentType = $request->payment_type;
+                $query->where(function($q) use ($input) {
+                    $paymentType = $input['payment_type'];
                     // Look for the exact payment type in the comma-separated list
                     $q->whereRaw("FIND_IN_SET(?, payment_type)", [$paymentType])
                       ->orWhere('payment_type', 'LIKE', "%{$paymentType},%")
@@ -65,8 +77,11 @@ class BIRDetailedController extends Controller
                   ->orderBy('si_number');
 
             // Paginate the results
-            $perPage = $request->input('per_page', 15);
-            $birDetailed = $query->paginate($perPage);
+            $perPage = (int)($input['per_page'] ?? 15);
+            $birDetailed = $query->select([
+                    'branch_name','store_name','date','si_number','vat_exempt_sales','zero_rated_sales','vat_amount','less_vat','gross_amount','discount_code','discount_amount','net_total','payment_type','amount'
+                ])
+                ->paginate($perPage);
 
             // Transform the data to ensure field naming consistency with the frontend
             $data = $birDetailed->getCollection()->map(function ($item) {
@@ -104,9 +119,14 @@ class BIRDetailedController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('BIR Detailed index failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'inputs' => $request->all(),
+            ]);
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to fetch BIR detailed data: ' . $e->getMessage()
+                'message' => 'Failed to fetch BIR detailed data.'
             ], 500);
         }
     }
@@ -114,12 +134,21 @@ class BIRDetailedController extends Controller
     public function export(Request $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
+            // Normalize inputs
+            $input = [
+                'branch_name' => is_string($request->branch_name) ? trim($request->branch_name) : $request->branch_name,
+                'store_name' => is_string($request->store_name) ? trim($request->store_name) : $request->store_name,
+                'payment_type' => is_string($request->payment_type) ? trim($request->payment_type) : $request->payment_type,
+                'from_date' => $request->from_date,
+                'to_date' => $request->to_date,
+            ];
+
+            $validator = Validator::make($input, [
                 'branch_name' => 'nullable|string',
                 'store_name' => 'nullable|string',
                 'payment_type' => 'nullable|string',
-                'from_date' => 'required|date',
-                'to_date' => 'required|date',
+                'from_date' => 'required|date_format:Y-m-d',
+                'to_date' => 'required|date_format:Y-m-d',
             ]);
 
             if ($validator->fails()) {
@@ -161,7 +190,9 @@ class BIRDetailedController extends Controller
                   ->orderBy('si_number');
 
             // Get all results without pagination for export
-            $results = $query->get();
+            $results = $query->select([
+                'branch_name','store_name','date','si_number','vat_exempt_sales','zero_rated_sales','vat_amount','less_vat','gross_amount','discount_code','discount_amount','net_total','payment_type','amount'
+            ])->get();
             
             // Transform the data to maintain consistency with frontend expectations
             $data = $results->map(function ($item) {
@@ -190,9 +221,14 @@ class BIRDetailedController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            \Log::error('BIR Detailed export failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'inputs' => $request->all(),
+            ]);
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to fetch BIR detailed data for export: ' . $e->getMessage()
+                'message' => 'Failed to fetch BIR detailed data for export.'
             ], 500);
         }
     }
