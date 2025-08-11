@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ItemDetails;
+use App\Models\ItemDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Resources\DiscountReportCollection;
@@ -28,7 +28,7 @@ class DiscountController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(ItemDetails $itemDetails)
+    public function show(ItemDetail $itemDetails)
     {
         //
     }
@@ -36,7 +36,7 @@ class DiscountController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, ItemDetails $itemDetails)
+    public function update(Request $request, ItemDetail $itemDetails)
     {
         //
     }
@@ -44,7 +44,7 @@ class DiscountController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(ItemDetails $itemDetails)
+    public function destroy(ItemDetail $itemDetails)
     {
         //
     }
@@ -61,11 +61,11 @@ class DiscountController extends Controller
                 'terminal_number' => 'nullable|string',
             ]);
 
-            $query = ItemDetails::query()
+            $query = ItemDetail::query()
                 ->select(
                     DB::raw('DATE(header.date) as transaction_date'), // Add daily date
                     'item_details.discount_code',
-                    DB::raw('SUM(item_details.discount_amount) as total_discount')
+                    DB::raw('SUM(CAST(item_details.discount_amount AS NUMERIC)) as total_discount')
                 )
                 ->when($request->filled('terminal_number') && strtoupper($request->terminal_number) !== 'ALL', function ($query) use ($request) {
                     $query->where('header.terminal_number', $request->terminal_number);

@@ -36,19 +36,19 @@ class FastMovingController extends Controller
             $categoryCode = $request->input('category_code');
             
             // Build the SQL query
-            $query = DB::table('product as p')
+            $query = DB::table('products as p')
                 ->select(
                     'p.category_code',
                     'c.category_name',
                     'p.product_code',
                     'p.product_name',
-                    DB::raw('COALESCE(ss.total_quantity_sold, 0) AS total_quantity_sold')
+                    'ss.total_quantity_sold'
                 )
-                ->leftJoin('category as c', 'p.category_code', '=', 'c.category_code')
+                ->leftJoin('categories as c', 'p.category_code', '=', 'c.category_code')
                 ->leftJoinSub(function ($query) use ($fromDate, $toDate, $branchName, $storeName) {
                     $query->select(
                             'id.product_code',
-                            DB::raw('SUM(id.qty) AS total_quantity_sold')
+                            DB::raw('SUM(CAST(id.qty AS INTEGER)) AS total_quantity_sold')
                         )
                         ->from('item_details', 'id')
                         ->join('header as h', function ($join) {
@@ -73,6 +73,7 @@ class FastMovingController extends Controller
                 }, 'ss', function ($join) {
                     $join->on('p.product_code', '=', 'ss.product_code');
                 })
+                ->groupBy('p.category_code', 'c.category_name', 'p.product_code', 'p.product_name', 'ss.total_quantity_sold')
                 ->orderByDesc('total_quantity_sold')
                 ->orderBy('p.product_name')
                 ->havingRaw('total_quantity_sold > 0');

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Dsr;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -13,6 +12,8 @@ class DailySalesController extends Controller
     public function getDailySalesData(Request $request)
     {
         try {
+            \Illuminate\Support\Facades\Log::info('DailySalesController: Request received', ['request' => $request->all()]);
+            
             $validator = Validator::make($request->all(), [
                 'branch_name' => 'nullable|string',
                 'store_name' => 'nullable|string',
@@ -22,6 +23,7 @@ class DailySalesController extends Controller
             ]);
     
             if ($validator->fails()) {
+                \Illuminate\Support\Facades\Log::error('DailySalesController: Validation failed', ['errors' => $validator->errors()]);
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Validation failed',
@@ -36,8 +38,30 @@ class DailySalesController extends Controller
             $fromDate = $request->input('from_date');
             $toDate = $request->input('to_date');
             
-            // Query the dsr summary table directly
-            $query = Dsr::whereBetween('date', [$fromDate, $toDate]);
+            \Illuminate\Support\Facades\Log::info('DailySalesController: Parameters extracted', [
+                'fromDate' => $fromDate,
+                'toDate' => $toDate,
+                'storeName' => $storeName,
+                'branchName' => $branchName,
+                'terminalNumber' => $terminalNumber
+            ]);
+            
+            // Test database connection
+            try {
+                \Illuminate\Support\Facades\DB::connection()->getPdo();
+                \Illuminate\Support\Facades\Log::info('DailySalesController: Database connection successful');
+            } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::error('DailySalesController: Database connection failed', ['error' => $e->getMessage()]);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Database connection failed',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+            
+            // Build the query using direct DB facade
+            $query = DB::table('dsr')
+                ->whereBetween('date', [$fromDate, $toDate]);
                 
             // Add conditional filters if branch or store names are provided and not 'ALL'
             if ($request->filled('store_name') && strtoupper($request->store_name) !== 'ALL') {
@@ -60,8 +84,24 @@ class DailySalesController extends Controller
                   ->orderBy('store_name')
                   ->orderBy('terminal_no');
             
+            \Illuminate\Support\Facades\Log::info('DailySalesController: About to execute query');
+            
             // Execute the query and get all results
-            $results = $query->get();
+            try {
+                $results = $query->get();
+                \Illuminate\Support\Facades\Log::info('DailySalesController: Query executed successfully', ['result_count' => count($results)]);
+            } catch (Exception $e) {
+                \Illuminate\Support\Facades\Log::error('DailySalesController: Query execution failed', [
+                    'error' => $e->getMessage(),
+                    'sql' => $query->toSql(),
+                    'bindings' => $query->getBindings()
+                ]);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Query execution failed',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
             
             // Calculate grand totals
             $grandTotalGrossSales = 0;
@@ -113,10 +153,15 @@ class DailySalesController extends Controller
             ]);
             
         } catch (Exception $e) {
+            \Illuminate\Support\Facades\Log::error('DailySalesController: Unexpected error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'status' => 'error',
                 'message' => 'An error occurred while processing the request',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : 'Enable debug mode for trace'
             ], 500);
         }
     }

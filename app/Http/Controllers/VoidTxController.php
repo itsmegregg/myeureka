@@ -49,7 +49,7 @@ class VoidTxController extends Controller
                     'h.time',
                     'h.si_number',
                     'h.cashier_name',
-                    DB::raw('SUM(id.void_amount) AS total_void_amount_for_transaction'),
+                    DB::raw('SUM(CAST(id.void_amount AS NUMERIC)) AS total_void_amount_for_transaction'),
                     'h.approved_by',
                     'h.void_reason'
                 )

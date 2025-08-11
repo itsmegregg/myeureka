@@ -10,6 +10,16 @@ class DSR extends Model
 
     protected $primaryKey = ['date', 'branch_name', 'store_name', 'terminal_no'];
     public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected function setKeysForSaveQuery($query)
+    {
+        foreach ($this->primaryKey as $key) {
+            $query->where($key, '=', $this->getAttribute($key));
+        }
+
+        return $query;
+    }
 
     protected $fillable = [
         'date',

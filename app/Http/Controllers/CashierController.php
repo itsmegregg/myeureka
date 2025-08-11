@@ -37,7 +37,7 @@ class CashierController extends Controller
                         id.terminal_number,
                         id.branch_name,
                         id.store_name,
-                        SUM(id.void_amount) AS total_void_amount
+                        SUM(CAST(id.void_amount AS NUMERIC)) AS total_void_amount
                     FROM
                         item_details AS id
                     GROUP BY
@@ -57,11 +57,11 @@ class CashierController extends Controller
                     DB::raw('DATE(h.date) as date'),
                     'h.terminal_number',
                     'h.cashier_name',
-                    DB::raw('SUM(h.gross_amount) - SUM(tis.total_void_amount) as total_gross_amount'),
-                    DB::raw('SUM(h.net_amount) - SUM(tis.total_void_amount) as total_net_amount'),
-                    DB::raw('SUM(h.service_charge) as total_service_charge'),
-                    DB::raw('SUM(h.less_vat) as total_less_vat'),
-                    DB::raw('SUM(tis.total_void_amount) as total_void_amount'),
+                    DB::raw('SUM(CAST(h.gross_amount AS NUMERIC)) - SUM(CAST(tis.total_void_amount AS NUMERIC)) as total_gross_amount'),
+                    DB::raw('SUM(CAST(h.net_amount AS NUMERIC)) - SUM(CAST(tis.total_void_amount AS NUMERIC)) as total_net_amount'),
+                    DB::raw('SUM(CAST(h.service_charge AS NUMERIC)) as total_service_charge'),
+                    DB::raw('SUM(CAST(h.less_vat AS NUMERIC)) as total_less_vat'),
+                    DB::raw('SUM(CAST(tis.total_void_amount AS NUMERIC)) as total_void_amount'),
                     DB::raw('COUNT(DISTINCT h.si_number) as tx_count')
                 )
                 ->whereBetween(DB::raw('DATE(h.date)'), [$request->from_date, $request->to_date]);
@@ -111,7 +111,7 @@ class CashierController extends Controller
                     'h.terminal_number',
                     'h.cashier_name',
                     'pd.payment_type',
-                    DB::raw('SUM(pd.amount) as total_amount')
+                    DB::raw('SUM(CAST(pd.amount AS NUMERIC)) as total_amount')
                 )
                 ->whereBetween(DB::raw('DATE(h.date)'), [$request->from_date, $request->to_date]);
             

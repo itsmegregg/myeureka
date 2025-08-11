@@ -135,7 +135,7 @@ export default function PieGraph({ data }: PieGraphProps) {
             const pieData = data.map((item, index) => {
                 return {
                     name: item.hour,
-                    y: item.sales,
+                    y: Number(item.sales), // Ensure sales is a number
                     color: colorPalette[index % colorPalette.length]
                 };
             });

@@ -37,7 +37,7 @@ class PaymentDetailsController extends Controller
            ->select(
                'pd.payment_type',
                'h.date',
-               DB::raw('sum(pd.amount) as `Total Amount`')
+               DB::raw('sum(CAST(pd.amount AS NUMERIC)) as "Total Amount"')
            )
            ->join('header as h', function ($join) use ($request) {
                $join->on('pd.si_number', '=', 'h.si_number')
