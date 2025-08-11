@@ -64,6 +64,35 @@ class UpdateSummaryTable extends Command
         DB::beginTransaction();
         
         try {
+            // Pre-insert diagnostic: how many groups would be inserted for this date?
+            $diag = DB::selectOne("
+                SELECT COUNT(*) AS cnt FROM (
+                    SELECT 
+                        h.date,
+                        id.branch_name,
+                        id.store_name,
+                        id.category_code,
+                        id.product_code
+                    FROM 
+                        item_details id
+                    JOIN header h ON id.si_number = h.si_number 
+                                  AND id.terminal_number = h.terminal_number 
+                                  AND id.branch_name = h.branch_name
+                                  AND id.store_name = h.store_name
+                    LEFT JOIN products p ON id.product_code = p.product_code
+                                        AND p.branch_name = id.branch_name
+                                        AND p.store_name = id.store_name
+                    WHERE h.date = ?
+                    GROUP BY 
+                        h.date,
+                        id.branch_name, 
+                        id.store_name,
+                        id.category_code,
+                        id.product_code
+                ) s
+            ", [$date]);
+            $this->info("[Diag] Groups to insert for {$date}: " . ((array)$diag)['cnt']);
+
             // Delete existing records for this date (to handle updates)
             DB::table('item_details_daily_summary')
                 ->where('date', $date)
@@ -110,6 +139,9 @@ class UpdateSummaryTable extends Command
             DB::commit();
             
             $this->info("Summary table updated successfully for {$date}");
+            // Post-insert diagnostic: count rows actually present for this date
+            $inserted = DB::table('item_details_daily_summary')->where('date', $date)->count();
+            $this->info("[Diag] Summary rows present for {$date}: {$inserted}");
             return 0;
         } catch (\Exception $e) {
             // Roll back the transaction if something goes wrong
@@ -192,6 +224,35 @@ class UpdateSummaryTable extends Command
             DB::beginTransaction();
             
             try {
+                // Pre-insert diagnostic: how many groups would be inserted for this date?
+                $diag = DB::selectOne("
+                    SELECT COUNT(*) AS cnt FROM (
+                        SELECT 
+                            h.date,
+                            id.branch_name,
+                            id.store_name,
+                            id.category_code,
+                            id.product_code
+                        FROM 
+                            item_details id
+                        JOIN header h ON id.si_number = h.si_number 
+                                      AND id.terminal_number = h.terminal_number 
+                                      AND id.branch_name = h.branch_name
+                                      AND id.store_name = h.store_name
+                        LEFT JOIN products p ON id.product_code = p.product_code
+                                            AND p.branch_name = id.branch_name
+                                            AND p.store_name = id.store_name
+                        WHERE h.date = ?
+                        GROUP BY 
+                            h.date,
+                            id.branch_name, 
+                            id.store_name,
+                            id.category_code,
+                            id.product_code
+                    ) s
+                ", [$date]);
+                $this->info("[Diag] Groups to insert for {$date}: " . ((array)$diag)['cnt']);
+
                 // Delete existing records for this date (to handle updates)
                 DB::table('item_details_daily_summary')
                     ->where('date', $date)
@@ -280,6 +341,34 @@ class UpdateSummaryTable extends Command
         
         try {
             $this->info('Processing all dates with a single query...');
+
+            // Pre-insert diagnostic (all dates): how many groups would be inserted?
+            $diagAll = DB::selectOne("
+                SELECT COUNT(*) AS cnt FROM (
+                    SELECT 
+                        h.date,
+                        id.branch_name,
+                        id.store_name,
+                        id.category_code,
+                        id.product_code
+                    FROM 
+                        item_details id
+                    JOIN header h ON id.si_number = h.si_number 
+                                  AND id.terminal_number = h.terminal_number 
+                                  AND id.branch_name = h.branch_name
+                                  AND id.store_name = h.store_name
+                    LEFT JOIN products p ON id.product_code = p.product_code
+                                        AND p.branch_name = id.branch_name
+                                        AND p.store_name = id.store_name
+                    GROUP BY 
+                        h.date,
+                        id.branch_name, 
+                        id.store_name,
+                        id.category_code,
+                        id.product_code
+                ) s
+            ");
+            $this->info("[Diag] Groups to insert (all dates): " . ((array)$diagAll)['cnt']);
 
             // Insert aggregated data for all dates in a single query
             $affected = DB::insert("

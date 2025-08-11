@@ -351,7 +351,7 @@ const [isExcelLoading, setIsExcelLoading] = useState(false);
                                         <BranchSelect />
                                         <DateRangePickernew/>
                                         <ProductSelect/>
-                                        <TerminalSelect/>
+                                        {/* <TerminalSelect/> */}
                                         <Button onClick={() => {
                                             setCurrentPage(1); // Reset to first page when search is clicked
                                             productMixData(1);

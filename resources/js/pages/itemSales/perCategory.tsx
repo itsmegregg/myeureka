@@ -391,7 +391,7 @@ export default function PerCategory() {
                                           <BranchSelect />
                                             <DateRangePickernew />
                                             <CategorySelect />
-                                            <TerminalSelect/>
+                                            {/* <TerminalSelect/> */}
                                             <Button
                                                 onClick={fetchAlldata}
                                                 disabled={isFetching}

@@ -91,7 +91,6 @@ class UpdateSummaryTable extends Command
                 FROM 
                     item_details id
                 JOIN header h ON id.si_number = h.si_number 
-                              AND id.terminal_number = h.terminal_number 
                               AND id.branch_name = h.branch_name
                 JOIN product p ON id.product_code = p.product_code
                 WHERE h.date = ?
@@ -215,7 +214,6 @@ class UpdateSummaryTable extends Command
                     FROM 
                         item_details id
                     JOIN header h ON id.si_number = h.si_number 
-                                  AND id.terminal_number = h.terminal_number 
                                   AND id.branch_name = h.branch_name
                     JOIN product p ON id.product_code = p.product_code
                     WHERE h.date = ?
@@ -312,7 +310,6 @@ class UpdateSummaryTable extends Command
                     FROM 
                         item_details id
                     JOIN header h ON id.si_number = h.si_number 
-                                  AND id.terminal_number = h.terminal_number 
                                   AND id.branch_name = h.branch_name
                     JOIN product p ON id.product_code = p.product_code
                     WHERE h.date = ?

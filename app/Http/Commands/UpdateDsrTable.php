@@ -6,16 +6,15 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-class UpdateDsrTable extends Command
+class UpdateSummaryTable extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'dsr:update {date? : Date to update (YYYY-MM-DD format, defaults to yesterday)}
+    protected $signature = 'summary:update {date? : Date to update (YYYY-MM-DD format, defaults to yesterday)}
                            {--all : Update all dates from the entire history}
-                           {--previous : Update the previous day\'s data}
                            {--start= : Start date for range update (YYYY-MM-DD format)}
                            {--end= : End date for range update (YYYY-MM-DD format)}';
 
@@ -24,7 +23,7 @@ class UpdateDsrTable extends Command
      *
      * @var string
      */
-    protected $description = 'Update the dsr table with aggregated daily sales data. Supports single date, date range, or all dates.';
+    protected $description = 'Update the item_details_daily_summary table with aggregated data. Supports single date, date range, or all dates.';
 
     /**
      * Execute the console command.
@@ -41,29 +40,23 @@ class UpdateDsrTable extends Command
             return $this->updateDateRange();
         }
         
-        // Check if --previous flag is provided
-        if ($this->option('previous')) {
-            $date = Carbon::yesterday()->format('Y-m-d');
-            return $this->updateSingleDate($date);
-        }
-        
-        // Otherwise process single date provided or default to yesterday
+        // Otherwise process single date
         $date = $this->argument('date') ?? Carbon::yesterday()->format('Y-m-d');
         return $this->updateSingleDate($date);
     }
     
     /**
-     * Update a single date in the dsr table
+     * Update a single date in the summary table
      */
     protected function updateSingleDate($date)
     {
-        $this->info("Updating DSR table for date: {$date}");
+        $this->info("Updating summary table for date: {$date}");
         
-        // Check if data exists for this date in daily_summary
-        $hasData = DB::table('daily_summary')->where('date', $date)->exists();
+        // Check if data exists for this date
+        $hasData = DB::table('header')->where('date', $date)->exists();
         
         if (!$hasData) {
-            $this->warn("No data found for {$date} in the daily_summary table. Skipping update.");
+            $this->warn("No data found for {$date} in the header table. Skipping update.");
             return 0;
         }
         
@@ -72,118 +65,59 @@ class UpdateDsrTable extends Command
         
         try {
             // Delete existing records for this date (to handle updates)
-            DB::table('dsr')
+            DB::table('item_details_daily_summary')
                 ->where('date', $date)
                 ->delete();
             
             // Insert aggregated data
-            DB::insert("INSERT INTO dsr (
-                    date,
-                    branch_name,
-                    store_name,
-                    terminal_no,
-                    si_from,
-                    si_to,
-                    old_grand_total,
-                    new_grand_total,
-                    number_of_transactions,
-                    number_of_guests,
-                    total_service_charge,
-                    total_gross_sales,
-                    total_net_sales_after_void,
-                    total_void_amount,
-                    PWD_Discount,
-                    Senior_Discount,
-                    National_Athletes_Discount,
-                    Solo_Parent_Discount,
-                    Valor_Discount,
-                    Other_Discounts,
-                    z_read_counter
-                ) SELECT
-                    ds.date,
-                    ds.branch_name,
-                    ds.store_name,
-                    ds.terminal_no,
-                    ds.si_from,
-                    ds.si_to,
-                    ds.old_grand_total,
-                    ds.new_grand_total,
-                    (ds.si_to - ds.si_from + 1) AS number_of_transactions,
-                    SUM(h.guest_count) AS number_of_guests,
-                    SUM(h.service_charge) AS total_service_charge,
-                    SUM(h.gross_amount) - COALESCE(SUM(tis.total_void_amount), 0) AS total_gross_sales,
-                    (SUM(h.net_amount) - COALESCE(SUM(tis.total_void_amount), 0)) AS total_net_sales_after_void,
-                    COALESCE(SUM(tis.total_void_amount), 0) AS total_void_amount,
-                    COALESCE(SUM(tis.PWD_Discount), 0) AS PWD_Discount,
-                    COALESCE(SUM(tis.Senior_Discount), 0) AS Senior_Discount,
-                    COALESCE(SUM(tis.National_Athletes_Discount), 0) AS National_Athletes_Discount,
-                    COALESCE(SUM(tis.Solo_Parent_Discount), 0) AS Solo_Parent_Discount,
-                    COALESCE(SUM(tis.Valor_Discount), 0) AS Valor_Discount,
-                    COALESCE(SUM(tis.Other_Discounts), 0) AS Other_Discounts,
-                    ds.z_read_counter
-                FROM
-                    daily_summary ds
-                JOIN header h ON ds.terminal_no = h.terminal_number
-                              AND ds.branch_name = h.branch_name
-                              AND ds.store_name = h.store_name
-                              AND ds.date = h.date
-                              AND h.si_number BETWEEN ds.si_from AND ds.si_to
-                LEFT JOIN (
-                    SELECT
-                        id.si_number,
-                        id.terminal_number,
-                        id.branch_name,
-                        id.store_name,
-                        SUM(id.void_amount) AS total_void_amount,
-                        SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN id.discount_amount ELSE 0 END) AS PWD_Discount,
-                        SUM(CASE WHEN id.discount_code = 'SENIOR' THEN id.discount_amount ELSE 0 END) AS Senior_Discount,
-                        SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN id.discount_amount ELSE 0 END) AS National_Athletes_Discount,
-                        SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN id.discount_amount ELSE 0 END) AS Solo_Parent_Discount,
-                        SUM(CASE WHEN id.discount_code = 'VALOR' THEN id.discount_amount ELSE 0 END) AS Valor_Discount,
-                        SUM(CASE
-                            WHEN id.discount_code NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT')
-                            THEN id.discount_amount
-                            ELSE 0
-                        END) AS Other_Discounts
-                    FROM
-                        item_details id
-                    GROUP BY
-                        id.si_number,
-                        id.terminal_number,
-                        id.branch_name,
-                        id.store_name
-                ) tis ON h.si_number = tis.si_number
-                     AND h.terminal_number = tis.terminal_number
-                     AND h.branch_name = tis.branch_name
-                     AND h.store_name = tis.store_name
-                WHERE ds.date = ?
-                GROUP BY
-                    ds.date,
-                    ds.branch_name,
-                    ds.store_name,
-                    ds.terminal_no,
-                    ds.si_from,
-                    ds.si_to,
-                    ds.old_grand_total,
-                    ds.new_grand_total,
-                    ds.z_read_counter
+            $affected = DB::insert("
+                INSERT INTO item_details_daily_summary (
+                    date, 
+                    branch_name, 
+                    store_name, 
+                    category_code, 
+                    product_code, 
+                    quantity, 
+                    net_sales
+                )
+                SELECT 
+                    h.date,
+                    id.branch_name,
+                    id.store_name,
+                    p.category_code,
+                    id.product_code,
+                    SUM(id.qty),
+                    SUM(id.net_total)
+                FROM 
+                    item_details id
+                JOIN header h ON id.si_number = h.si_number 
+                              AND id.terminal_number = h.terminal_number 
+                              AND id.branch_name = h.branch_name
+                JOIN product p ON id.product_code = p.product_code
+                WHERE h.date = ?
+                GROUP BY 
+                    h.date,
+                    id.branch_name, 
+                    id.store_name,
+                    p.category_code,
+                    id.product_code
             ", [$date]);
             
             // Commit the transaction
             DB::commit();
             
-            $this->info("DSR table updated successfully for {$date}");
+            $this->info("Summary table updated successfully for {$date}");
             return 0;
         } catch (\Exception $e) {
             // Roll back the transaction if something goes wrong
             DB::rollBack();
-            $this->error("Error updating DSR table for date {$date}: " . $e->getMessage());
+            $this->error("Error updating summary table: " . $e->getMessage());
             return 1;
         }
     }
     
     /**
-     * Update a date range in the dsr table
+     * Update a date range in the summary table
      */
     protected function updateDateRange()
     {
@@ -222,10 +156,10 @@ class UpdateDsrTable extends Command
             return 1;
         }
         
-        $this->info("Updating DSR table for date range: {$startDate} to {$endDate}");
+        $this->info("Updating summary table for date range: {$startDate} to {$endDate}");
         
-        // Get all dates within the range that exist in the daily_summary table
-        $dates = DB::table('daily_summary')
+        // Get all dates within the range that exist in the header table
+        $dates = DB::table('header')
             ->select('date')
             ->distinct()
             ->whereBetween('date', [$startDate, $endDate])
@@ -255,101 +189,42 @@ class UpdateDsrTable extends Command
             
             try {
                 // Delete existing records for this date (to handle updates)
-                DB::table('dsr')
+                DB::table('item_details_daily_summary')
                     ->where('date', $date)
                     ->delete();
                 
-                // Insert aggregated data (using the same query as updateSingleDate)
-                DB::insert("INSERT INTO dsr (
-                        date,
-                        branch_name,
-                        store_name,
-                        terminal_no,
-                        si_from,
-                        si_to,
-                        old_grand_total,
-                        new_grand_total,
-                        number_of_transactions,
-                        number_of_guests,
-                        total_service_charge,
-                        total_gross_sales,
-                        total_net_sales_after_void,
-                        total_void_amount,
-                        PWD_Discount,
-                        Senior_Discount,
-                        National_Athletes_Discount,
-                        Solo_Parent_Discount,
-                        Valor_Discount,
-                        Other_Discounts,
-                        z_read_counter
-                    ) SELECT
-                        ds.date,
-                        ds.branch_name,
-                        ds.store_name,
-                        ds.terminal_no,
-                        ds.si_from,
-                        ds.si_to,
-                        ds.old_grand_total,
-                        ds.new_grand_total,
-                        (ds.si_to - ds.si_from + 1) AS number_of_transactions,
-                        SUM(h.guest_count) AS number_of_guests,
-                        SUM(h.service_charge) AS total_service_charge,
-                        SUM(h.gross_amount) - COALESCE(SUM(tis.total_void_amount), 0) AS total_gross_sales,
-                        (SUM(h.net_amount) - COALESCE(SUM(tis.total_void_amount), 0)) AS total_net_sales_after_void,
-                        COALESCE(SUM(tis.total_void_amount), 0) AS total_void_amount,
-                        COALESCE(SUM(tis.PWD_Discount), 0) AS PWD_Discount,
-                        COALESCE(SUM(tis.Senior_Discount), 0) AS Senior_Discount,
-                        COALESCE(SUM(tis.National_Athletes_Discount), 0) AS National_Athletes_Discount,
-                        COALESCE(SUM(tis.Solo_Parent_Discount), 0) AS Solo_Parent_Discount,
-                        COALESCE(SUM(tis.Valor_Discount), 0) AS Valor_Discount,
-                        COALESCE(SUM(tis.Other_Discounts), 0) AS Other_Discounts,
-                        ds.z_read_counter
-                    FROM
-                        daily_summary ds
-                    JOIN header h ON ds.terminal_no = h.terminal_number
-                                  AND ds.branch_name = h.branch_name
-                                  AND ds.store_name = h.store_name
-                                  AND ds.date = h.date
-                                  AND h.si_number BETWEEN ds.si_from AND ds.si_to
-                    LEFT JOIN (
-                        SELECT
-                            id.si_number,
-                            id.terminal_number,
-                            id.branch_name,
-                            id.store_name,
-                            SUM(id.void_amount) AS total_void_amount,
-                            SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN id.discount_amount ELSE 0 END) AS PWD_Discount,
-                            SUM(CASE WHEN id.discount_code = 'SENIOR' THEN id.discount_amount ELSE 0 END) AS Senior_Discount,
-                            SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN id.discount_amount ELSE 0 END) AS National_Athletes_Discount,
-                            SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN id.discount_amount ELSE 0 END) AS Solo_Parent_Discount,
-                            SUM(CASE WHEN id.discount_code = 'VALOR' THEN id.discount_amount ELSE 0 END) AS Valor_Discount,
-                            SUM(CASE
-                                WHEN id.discount_code NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT')
-                                THEN id.discount_amount
-                                ELSE 0
-                            END) AS Other_Discounts
-                        FROM
-                            item_details id
-                        GROUP BY
-                            id.si_number,
-                            id.terminal_number,
-                            id.branch_name,
-                            id.store_name
-                    ) tis ON h.si_number = tis.si_number
-                         AND h.terminal_number = tis.terminal_number
-                         AND h.branch_name = tis.branch_name
-                         AND h.store_name = tis.store_name
-                    WHERE ds.date = ?
-                    GROUP BY
-                        ds.date,
-                        ds.branch_name,
-                        ds.store_name,
-                        ds.terminal_no,
-                        ds.si_from,
-                        ds.si_to,
-                        ds.old_grand_total,
-                        ds.new_grand_total,
-                        ds.z_read_counter
+                // Insert aggregated data
+                DB::insert("
+                    INSERT INTO item_details_daily_summary (
+                        date, 
+                        branch_name, 
+                        store_name, 
+                        category_code, 
+                        product_code, 
+                        quantity, 
+                        net_sales
+                    )
+                    SELECT 
+                        h.date,
+                        id.branch_name,
+                        id.store_name,
+                        p.category_code,
+                        id.product_code,
+                        SUM(id.qty),
+                        SUM(id.net_total)
+                    FROM 
+                        item_details id
+                    JOIN header h ON id.si_number = h.si_number 
+                                  AND id.terminal_number = h.terminal_number 
+                                  AND id.branch_name = h.branch_name
+                    JOIN product p ON id.product_code = p.product_code
+                    WHERE h.date = ?
+                    GROUP BY 
+                        h.date,
+                        id.branch_name, 
+                        id.store_name,
+                        p.category_code,
+                        id.product_code
                 ", [$date]);
                 
                 DB::commit();
@@ -377,23 +252,23 @@ class UpdateDsrTable extends Command
     }
     
     /**
-     * Update all dates in the dsr table
+     * Update all dates in the summary table
      */
     protected function updateAllDates()
     {
-        $this->info('Starting to update DSR table for all dates...');
+        $this->info('Starting to update summary table for all dates...');
         
         // Clear the summary table first
-        if ($this->confirm('This will delete all existing data in the DSR table. Continue?', true)) {
-            DB::table('dsr')->truncate();
-            $this->info('DSR table cleared.');
+        if ($this->confirm('This will delete all existing data in the summary table. Continue?', true)) {
+            DB::table('item_details_daily_summary')->truncate();
+            $this->info('Summary table cleared.');
         } else {
             $this->info('Operation cancelled.');
             return 1;
         }
         
-        // Get all distinct dates from daily_summary
-        $dates = DB::table('daily_summary')
+        // Get all distinct dates from header
+        $dates = DB::table('header')
             ->select('date')
             ->distinct()
             ->orderBy('date')
@@ -416,96 +291,37 @@ class UpdateDsrTable extends Command
             
             try {
                 // Insert aggregated data
-                DB::insert("INSERT INTO dsr (
-                        date,
-                        branch_name,
-                        store_name,
-                        terminal_no,
-                        si_from,
-                        si_to,
-                        old_grand_total,
-                        new_grand_total,
-                        number_of_transactions,
-                        number_of_guests,
-                        total_service_charge,
-                        total_gross_sales,
-                        total_net_sales_after_void,
-                        total_void_amount,
-                        PWD_Discount,
-                        Senior_Discount,
-                        National_Athletes_Discount,
-                        Solo_Parent_Discount,
-                        Valor_Discount,
-                        Other_Discounts,
-                        z_read_counter
-                    ) SELECT
-                        ds.date,
-                        ds.branch_name,
-                        ds.store_name,
-                        ds.terminal_no,
-                        ds.si_from,
-                        ds.si_to,
-                        ds.old_grand_total,
-                        ds.new_grand_total,
-                        (ds.si_to - ds.si_from + 1) AS number_of_transactions,
-                        SUM(h.guest_count) AS number_of_guests,
-                        SUM(h.service_charge) AS total_service_charge,
-                        SUM(h.gross_amount) - COALESCE(SUM(tis.total_void_amount), 0) AS total_gross_sales,
-                        (SUM(h.net_amount) - COALESCE(SUM(tis.total_void_amount), 0)) AS total_net_sales_after_void,
-                        COALESCE(SUM(tis.total_void_amount), 0) AS total_void_amount,
-                        COALESCE(SUM(tis.PWD_Discount), 0) AS PWD_Discount,
-                        COALESCE(SUM(tis.Senior_Discount), 0) AS Senior_Discount,
-                        COALESCE(SUM(tis.National_Athletes_Discount), 0) AS National_Athletes_Discount,
-                        COALESCE(SUM(tis.Solo_Parent_Discount), 0) AS Solo_Parent_Discount,
-                        COALESCE(SUM(tis.Valor_Discount), 0) AS Valor_Discount,
-                        COALESCE(SUM(tis.Other_Discounts), 0) AS Other_Discounts,
-                        ds.z_read_counter
-                    FROM
-                        daily_summary ds
-                    JOIN header h ON ds.terminal_no = h.terminal_number
-                                  AND ds.branch_name = h.branch_name
-                                  AND ds.store_name = h.store_name
-                                  AND ds.date = h.date
-                                  AND h.si_number BETWEEN ds.si_from AND ds.si_to
-                    LEFT JOIN (
-                        SELECT
-                            id.si_number,
-                            id.terminal_number,
-                            id.branch_name,
-                            id.store_name,
-                            SUM(id.void_amount) AS total_void_amount,
-                            SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN id.discount_amount ELSE 0 END) AS PWD_Discount,
-                            SUM(CASE WHEN id.discount_code = 'SENIOR' THEN id.discount_amount ELSE 0 END) AS Senior_Discount,
-                            SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN id.discount_amount ELSE 0 END) AS National_Athletes_Discount,
-                            SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN id.discount_amount ELSE 0 END) AS Solo_Parent_Discount,
-                            SUM(CASE WHEN id.discount_code = 'VALOR' THEN id.discount_amount ELSE 0 END) AS Valor_Discount,
-                            SUM(CASE
-                                WHEN id.discount_code NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT')
-                                THEN id.discount_amount
-                                ELSE 0
-                            END) AS Other_Discounts
-                        FROM
-                            item_details id
-                        GROUP BY
-                            id.si_number,
-                            id.terminal_number,
-                            id.branch_name,
-                            id.store_name
-                    ) tis ON h.si_number = tis.si_number
-                         AND h.terminal_number = tis.terminal_number
-                         AND h.branch_name = tis.branch_name
-                         AND h.store_name = tis.store_name
-                    WHERE ds.date = ?
-                    GROUP BY
-                        ds.date,
-                        ds.branch_name,
-                        ds.store_name,
-                        ds.terminal_no,
-                        ds.si_from,
-                        ds.si_to,
-                        ds.old_grand_total,
-                        ds.new_grand_total,
-                        ds.z_read_counter
+                DB::insert("
+                    INSERT INTO item_details_daily_summary (
+                        date, 
+                        branch_name, 
+                        store_name, 
+                        category_code, 
+                        product_code, 
+                        quantity, 
+                        net_sales
+                    )
+                    SELECT 
+                        h.date,
+                        id.branch_name,
+                        id.store_name,
+                        p.category_code,
+                        id.product_code,
+                        SUM(id.qty),
+                        SUM(id.net_total)
+                    FROM 
+                        item_details id
+                    JOIN header h ON id.si_number = h.si_number 
+                                  AND id.terminal_number = h.terminal_number 
+                                  AND id.branch_name = h.branch_name
+                    JOIN product p ON id.product_code = p.product_code
+                    WHERE h.date = ?
+                    GROUP BY 
+                        h.date,
+                        id.branch_name, 
+                        id.store_name,
+                        p.category_code,
+                        id.product_code
                 ", [$date]);
                 
                 DB::commit();
@@ -513,7 +329,7 @@ class UpdateDsrTable extends Command
             } catch (\Exception $e) {
                 DB::rollBack();
                 $errorCount++;
-                $this->error("Error processing date {$date}: " . $e->getMessage());
+                // Don't display error immediately to avoid cluttering the progress bar
             }
             
             $bar->advance();
@@ -522,7 +338,7 @@ class UpdateDsrTable extends Command
         $bar->finish();
         $this->newLine();
         
-        $this->info("DSR table update completed.");
+        $this->info("Summary table update completed.");
         $this->info("Successfully processed: {$successCount} dates");
         
         if ($errorCount > 0) {
