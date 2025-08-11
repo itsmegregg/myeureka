@@ -84,22 +84,25 @@ class UpdateSummaryTable extends Command
                     h.date,
                     id.branch_name,
                     id.store_name,
-                    p.category_code,
+                    id.category_code,
                     id.product_code,
-                    SUM(CAST(CAST(id.qty AS NUMERIC) AS INTEGER)),
-                    SUM(CAST(id.net_total AS NUMERIC(10, 2)))
+                    SUM(CAST(id.qty AS DECIMAL(10, 2))),
+                    SUM(CAST(id.net_total AS DECIMAL(10, 2)))
                 FROM 
                     item_details id
                 JOIN header h ON id.si_number = h.si_number 
                               AND id.terminal_number = h.terminal_number 
                               AND id.branch_name = h.branch_name
-                JOIN products p ON id.product_code = p.product_code
+                              AND id.store_name = h.store_name
+                LEFT JOIN products p ON id.product_code = p.product_code
+                                    AND p.branch_name = id.branch_name
+                                    AND p.store_name = id.store_name
                 WHERE h.date = ?
                 GROUP BY 
                     h.date,
                     id.branch_name, 
                     id.store_name,
-                    p.category_code,
+                    id.category_code,
                     id.product_code
             ", [$date]);
             
@@ -112,6 +115,7 @@ class UpdateSummaryTable extends Command
             // Roll back the transaction if something goes wrong
             DB::rollBack();
             $this->error("Error updating summary table: " . $e->getMessage());
+            $this->error("SQL: " . $e->getTraceAsString());
             return 1;
         }
     }
@@ -208,27 +212,34 @@ class UpdateSummaryTable extends Command
                         h.date,
                         id.branch_name,
                         id.store_name,
-                        p.category_code,
+                        id.category_code,
                         id.product_code,
-                        SUM(CAST(CAST(id.qty AS NUMERIC) AS INTEGER)),
-                        SUM(CAST(id.net_total AS NUMERIC(10, 2)))
+                        SUM(CAST(id.qty AS DECIMAL(10, 2))),
+                        SUM(CAST(id.net_total AS DECIMAL(10, 2)))
                     FROM 
                         item_details id
                     JOIN header h ON id.si_number = h.si_number 
                                   AND id.terminal_number = h.terminal_number 
                                   AND id.branch_name = h.branch_name
-                    JOIN products p ON id.product_code = p.product_code
+                                  AND id.store_name = h.store_name
+                    LEFT JOIN products p ON id.product_code = p.product_code
+                                        AND p.branch_name = id.branch_name
+                                        AND p.store_name = id.store_name
                     WHERE h.date = ?
                     GROUP BY 
                         h.date,
                         id.branch_name, 
                         id.store_name,
-                        p.category_code,
+                        id.category_code,
                         id.product_code
                 ", [$date]);
                 
                 DB::commit();
                 $successCount++;
+                
+                // Check how many rows were inserted for this date
+                $dateRowCount = DB::table('item_details_daily_summary')->where('date', $date)->count();
+                $this->info("Inserted {$dateRowCount} rows for date {$date}");
             } catch (\Exception $e) {
                 DB::rollBack();
                 $errorCount++;
@@ -285,27 +296,35 @@ class UpdateSummaryTable extends Command
                     h.date,
                     id.branch_name,
                     id.store_name,
-                    p.category_code,
+                    id.category_code,
                     id.product_code,
-                    SUM(CAST(CAST(id.qty AS NUMERIC) AS INTEGER)),
-                    SUM(CAST(id.net_total AS NUMERIC(10, 2)))
+                    SUM(CAST(id.qty AS DECIMAL(10, 2))),
+                    SUM(CAST(id.net_total AS DECIMAL(10, 2)))
                 FROM 
                     item_details id
                 JOIN header h ON id.si_number = h.si_number 
                               AND id.terminal_number = h.terminal_number 
                               AND id.branch_name = h.branch_name
-                JOIN products p ON id.product_code = p.product_code
+                              AND id.store_name = h.store_name
+                LEFT JOIN products p ON id.product_code = p.product_code
+                                    AND p.branch_name = id.branch_name
+                                    AND p.store_name = id.store_name
                 GROUP BY 
                     h.date,
                     id.branch_name, 
                     id.store_name,
-                    p.category_code,
+                    id.category_code,
                     id.product_code
             ");
 
             $this->info("Summary table update completed successfully. {$affected} summary rows were inserted.");
+            
+            // Check if any data was actually inserted
+            $rowCount = DB::table('item_details_daily_summary')->count();
+            $this->info("Total rows in summary table: {$rowCount}");
         } catch (\Exception $e) {
             $this->error("Error updating summary table for all dates: " . $e->getMessage());
+            $this->error("SQL: " . $e->getTraceAsString());
             return 1;
         }
         
