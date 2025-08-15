@@ -225,12 +225,12 @@ export default function FastMovingIndex() {
                                         <div className="flex flex-col">
                                             {/* <h3 className="text-sm font-medium mb-1">Sort by:</h3> */}
                                             <RadioGroup
-                                                className="flex items-center space-x-4 border p-2 rounded-md bg-slate-50"
+                                                className="flex items-center space-x-4 border p-2 rounded-md"
                                                 value={sortOrder}
                                                 onValueChange={handleSortOrderChange}
                                             >
                                                 <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="DESC" id="popular" />
+                                                    <RadioGroupItem value="DESC" id="popular"/>
                                                     <Label htmlFor="popular" className="font-medium">Popular (Most Sold)</Label>
                                                 </div>
                                                 <div className="flex items-center space-x-2">
