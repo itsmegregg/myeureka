@@ -109,7 +109,7 @@ export default function VoidTxIndex() {
                 time: data.time,
                 si_number: data.si_number,
                 cashier_name: data.cashier_name,
-                total_void_amount_for_transaction: data.total_void_amount_for_transaction,
+                total_void_amount_for_transaction: Number(data.total_void_amount_for_transaction),
                 approved_by: data.approved_by
             }));
             
@@ -162,7 +162,7 @@ export default function VoidTxIndex() {
                 data.time,
                 data.si_number,
                 data.cashier_name,
-                data.total_void_amount_for_transaction.toFixed(2),
+                Number(data.total_void_amount_for_transaction).toFixed(2),
                 data.approved_by,
                 data.void_reason
             ]);
@@ -289,7 +289,7 @@ export default function VoidTxIndex() {
                                                             <TableCell>{data.time}</TableCell>
                                                             <TableCell>{data.si_number}</TableCell>
                                                             <TableCell>{data.cashier_name}</TableCell>
-                                                            <TableCell>{data.total_void_amount_for_transaction.toFixed(2)}</TableCell>
+                                                            <TableCell>{Number(data.total_void_amount_for_transaction).toFixed(2)}</TableCell>
                                                             <TableCell>{data.void_reason}</TableCell>
                                                             <TableCell>{data.approved_by}</TableCell>
                                                             
