@@ -140,7 +140,7 @@ export default function HourlyIndex() {
                                     <div className="flex flex-wrap items-end gap-2">
                                         <BranchSelect />
                                         <DateRangePickernew />
-                                        <TerminalSelect/>
+                                       
                                         <Button
                                             onClick={fetchAllData}
                                             disabled={loading}

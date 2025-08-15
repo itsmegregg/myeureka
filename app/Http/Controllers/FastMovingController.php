@@ -48,7 +48,7 @@ class FastMovingController extends Controller
                 ->leftJoinSub(function ($query) use ($fromDate, $toDate, $branchName, $storeName) {
                     $query->select(
                             'id.product_code',
-                            DB::raw('SUM(CAST(id.qty AS INTEGER)) AS total_quantity_sold')
+                            DB::raw('SUM(CAST(id.qty AS NUMERIC)) AS total_quantity_sold')
                         )
                         ->from('item_details', 'id')
                         ->join('header as h', function ($join) {

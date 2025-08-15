@@ -63,8 +63,8 @@ export default function GovernmentDiscountIndex() {
             const params = {
                 from_date: selectedDateRange?.from ? format(selectedDateRange.from, 'yyyy-MM-dd') : '',
                 to_date: selectedDateRange?.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : '',
-                branch_name: selectedBranch || 'ALL',
-                store_name: selectedStore || 'ALL',
+                branch_name: typeof selectedBranch === 'string' ? selectedBranch : (selectedBranch?.branch_name || 'ALL'),
+                store_name: typeof selectedStore === 'string' ? selectedStore : (selectedStore?.name || 'ALL'),
                 page: page,
             };
 
@@ -94,8 +94,8 @@ export default function GovernmentDiscountIndex() {
             const params = {
                 from_date: selectedDateRange?.from ? format(selectedDateRange.from, 'yyyy-MM-dd') : '',
                 to_date: selectedDateRange?.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : '',
-                branch_name: selectedBranch ?? 'ALL',
-                store_name: selectedStore ?? 'ALL',
+                branch_name: typeof selectedBranch === 'string' ? selectedBranch : (selectedBranch?.branch_name || 'ALL'),
+                store_name: typeof selectedStore === 'string' ? selectedStore : (selectedStore?.name || 'ALL'),
                 all_data: '1', // Request all data without pagination - send as '1' for proper boolean parsing
             };
             const response = await axios.get<GovernmentDiscountApiResponse>('/api/government-data', { params });

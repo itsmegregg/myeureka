@@ -302,7 +302,7 @@ export default function PaymentIndex() {
                                         <DateRangePickernew />
                                         <Checkbox id="merge" checked={isMerged} onCheckedChange={(checked) => setIsMerged(checked as boolean)} />
                                         <Label htmlFor="merge">Merge</Label>
-                                        <TerminalSelect/>
+                                        {/* <TerminalSelect/> */}
                                         <Button onClick={fetchPaymentData}>
                                             <Search className="mr-2 h-4 w-4" />
                                             Search
