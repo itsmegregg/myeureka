@@ -57,14 +57,14 @@ class VoidTxController extends Controller
                 ->where('h.void_flag', 1);
     
             // Add conditions only if they're not 'ALL'
-            if ($request->has('branch_name') && $request->branch_name !== 'ALL') {
-                $query->where('h.branch_name', 'LIKE', '%' . trim($request->branch_name) . '%');
+            if ($request->filled('branch_name') && strtoupper($request->branch_name) !== 'ALL') {
+                $query->where('h.branch_name', trim($request->branch_name));
             }
-            if ($request->has('store_name') && $request->store_name !== 'ALL') {
-                $query->where('h.store_name', 'LIKE', '%' . trim($request->store_name) . '%');
+            if ($request->filled('store_name') && strtoupper($request->store_name) !== 'ALL') {
+                $query->where('h.store_name', trim($request->store_name));
             }
-            if ($request->has('cashier_name') && $request->cashier_name !== 'ALL') {
-                $query->where('h.cashier_name', 'LIKE', '%' . trim($request->cashier_name) . '%');
+            if ($request->filled('cashier_name') && strtoupper($request->cashier_name) !== 'ALL') {
+                $query->where('h.cashier_name', trim($request->cashier_name));
             }
     
             $voidTransactions = $query->groupBy(
