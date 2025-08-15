@@ -157,9 +157,13 @@ class ReceiptController extends Controller
             ], 422);
         }
 
-        $receipts = Receipt::where('si_number', $request->si_number)
-            ->where('branch_name', $request->branch_name)
-            ->get();
+        if ($request->branch_name === 'ALL') {
+            $receipts = Receipt::where('si_number', $request->si_number)->get();
+        } else {
+            $receipts = Receipt::where('si_number', $request->si_number)
+                ->where('branch_name', $request->branch_name)
+                ->get();
+        }
 
         if ($receipts->isNotEmpty()) {
             return response()->json([

@@ -97,7 +97,7 @@ export default function ReceiptsIndex() {
                 branch_name: selectedBranch.branch_name,
             });
 
-            setReceipts(dedupe([response.data.data]));
+            setReceipts(dedupe(response.data.data));
         } catch (err: any) {
             setError(err.response?.data?.message || 'Receipt not found');
             setReceipts([]);
