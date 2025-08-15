@@ -62,9 +62,9 @@ export default function GovernmentDiscountIndex() {
         try {
             const params = {
                 from_date: selectedDateRange?.from ? format(selectedDateRange.from, 'yyyy-MM-dd') : '',
-                             to_date: selectedDateRange?.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : '',
-                             branch_name: selectedBranch ?? 'ALL',
-                             store_name: selectedStore ?? 'ALL',
+                to_date: selectedDateRange?.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : '',
+                branch_name: selectedBranch || 'ALL',
+                store_name: selectedStore || 'ALL',
                 page: page,
             };
 

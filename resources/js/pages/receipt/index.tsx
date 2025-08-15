@@ -83,8 +83,8 @@ export default function ReceiptsIndex() {
     }
 
     const searchBySiNumber = async () => {
-        if (!siNumber || !selectedBranch?.branch_name) {
-            setError('Please enter SI Number and select a Branch');
+        if (!siNumber) {
+            setError('Please enter SI Number');
             return;
         }
 
@@ -94,7 +94,7 @@ export default function ReceiptsIndex() {
         try {
             const response = await axios.post('/api/receipts/search-via-si-number', {
                 si_number: siNumber,
-                branch_name: selectedBranch.branch_name,
+                branch_name: selectedBranch?.branch_name || 'ALL',
             });
 
             setReceipts(dedupe(response.data.data));
