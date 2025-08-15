@@ -157,19 +157,19 @@ class ReceiptController extends Controller
             ], 422);
         }
 
-        $receipt = Receipt::where('si_number', $request->si_number)
+        $receipts = Receipt::where('si_number', $request->si_number)
             ->where('branch_name', $request->branch_name)
-            ->first();
+            ->get();
 
-        if ($receipt) {
+        if ($receipts->isNotEmpty()) {
             return response()->json([
-                'message' => 'Receipt found!',
-                'data' => $receipt
+                'message' => 'Receipts found!',
+                'data' => $receipts
             ], 200);
         } else {
             return response()->json([
                 'message' => 'Receipt not found',
-                'data' => null
+                'data' => []
             ], 404);
         }
     }
