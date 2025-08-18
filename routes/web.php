@@ -71,4 +71,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\ValidateActiveSessio
     Route::get('receipt', function () {
         return Inertia::render('receipt/index');
     })->name('receipt');
+
+    Route::get('zread', function () {
+        return Inertia::render('zread/index');
+    })->name('zread');
 });

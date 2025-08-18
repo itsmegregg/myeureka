@@ -6,6 +6,8 @@ import {
   CreditCard,
   File,
 
+  NotepadText,
+
   PanelLeftDashedIcon,
   Percent,
 
@@ -132,6 +134,12 @@ const data = {
       title: "Receipt",
       url: "/receipt",
       icon: File,
+      isActive: false,
+    },
+    {
+      title: "Zread",
+      url: "/zread",
+      icon: NotepadText,
       isActive: false,
     }
    

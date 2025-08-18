@@ -89,7 +89,7 @@ Route::post('/item-details', [App\Http\Controllers\API\ItemDetailsController::cl
 Route::post('/header', [App\Http\Controllers\API\HeaderApiController::class, 'store']);
 Route::post('/payment-details', [App\Http\Controllers\API\PaymentController::class, 'store']);
 Route::post('/government', [App\Http\Controllers\API\GovernmentDiscountController::class, 'store']);
-
+Route::post('/zread', [App\Http\Controllers\API\ZreadController::class, 'store']);
 Route::get('/government-data', [GovernmentDataController::class, 'requestData']);
 Route::get('/void-tx', [VoidTxController::class, 'VoidTxData']);
 Route::get('/cashier', [CashierController::class, 'CashierData']);
@@ -108,5 +108,8 @@ Route::post('/receipts/search-by-date-range', [App\Http\Controllers\API\ReceiptC
 Route::post('/receipts/download-consolidated', [App\Http\Controllers\API\ReceiptController::class, 'downloadConsolidated']);
 // Route::get('/receipt', [ReceiptController::class, 'index']);
 
+
+//zread data
+Route::get('/zreadDateRange', [App\Http\Controllers\ZreadController::class, 'searchByDateRange']);
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth:sanctum');
