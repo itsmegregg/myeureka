@@ -45,9 +45,7 @@ class ZreadController extends Controller
                 $query->where('branch_name', trim($request->branch_name));
             }
 
-            if ($request->filled('store_name') && strtoupper($request->store_name) !== 'ALL') {
-                $query->where('store_name', trim($request->store_name));
-            }
+            // Note: zread table has no store_name column; ignore store_name filter
 
             $zreads = $query->orderBy('date', 'asc')->get();
 
