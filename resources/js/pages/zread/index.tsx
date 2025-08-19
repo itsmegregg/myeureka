@@ -10,6 +10,7 @@ import { useDateRange } from "@/store/useDateRange";
 import axios from "axios";
 import { Eye, FileText, File as FileIcon, Search } from "lucide-react";
 import { format as formatDate } from "date-fns";
+import { useStore } from "@/store/useStore";
 
 interface ZreadItem {
   id: number;
@@ -112,28 +113,33 @@ export default function ZreadIndex() {
   const [zreads, setZreads] = useState<ZreadItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { selectedBranch } = useBranchStore();
+  const { dateRange: selectedDateRange } = useDateRange();
   const { dateRange } = useDateRange();
 
+
+      const { selectedBranch } = useBranchStore();
+ 
+      const { selectedStore } = useStore();
+
   const searchByDateRange = async () => {
-    if (!selectedBranch?.branch_name || !dateRange.from || !dateRange.to) {
-      setError("Please select a Branch and a Date Range");
-      return;
-    }
+
 
     setLoading(true);
     setError("");
     setZreads([]);
     try {
-      const from_date = toYyyyDashMmDashDd(dateRange.from);
-      const to_date = toYyyyDashMmDashDd(dateRange.to);
+
       const response = await axios.get("/api/zreadDateRange", {
         params: {
-          branch_name: selectedBranch.branch_name,
-          from_date,
-          to_date,
-        },
+          branch_name: selectedBranch?.branch_name ?? 'ALL',
+          from_date: selectedDateRange.from,
+          to_date: selectedDateRange.to,
+          store_name: selectedStore ?? 'ALL',
+          
+      },
       });
+
+
 
       const items: ZreadItem[] = response.data?.data || [];
       setZreads(items);
