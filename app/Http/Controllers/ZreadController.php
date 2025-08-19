@@ -32,23 +32,22 @@ class ZreadController extends Controller
         }
 
         try {
+            $branch = $request->branch_name;
             $from = $request->from_date;
             $to = $request->to_date;
 
             if ($from > $to) { [$from, $to] = [$to, $from]; }
 
-            $query = Zread::query()
-                ->whereBetween('date', [$from, $to]);
-
-            if ($request->filled('branch_name') && strtoupper($request->branch_name) !== 'ALL') {
-                $query->where('branch_name', trim($request->branch_name));
-            }
-
-            if ($request->filled('store_name') && strtoupper($request->store_name) !== 'ALL') {
-                $query->where('store_name', trim($request->store_name));
-            }
-
-            $zreads = $query->orderBy('date', 'asc')->get();
+            $zreads = Zread::where('branch_name', $branch)
+                ->whereBetween('date', [$from, $to])
+                ->orderBy('date', 'asc')
+                ->get();
+                if ($request->filled('branch_name') && strtoupper($request->branch_name) !== 'ALL') {
+                    $zreads->where('branch_name', trim($request->branch_name));
+                }
+                if ($request->filled('store_name') && strtoupper($request->store_name) !== 'ALL') {
+                    $zreads->where('store_name', trim($request->store_name));
+                }
 
             return response()->json([
                 'message' => 'Zreads fetched successfully',
