@@ -589,7 +589,7 @@ export default function DailySalesIndex() {
 
 {grandTotals && (dailySalesData.length > 0) && (
                                      
-                                     <TableRow className="bg-gray-100 font-bold">
+                                     <TableRow className="bg-primary-foreground font-bold">
                                          <TableCell colSpan={9} className="text-right">Grand Totals:</TableCell>
                                          <TableCell className="text-center">{formatAmount(grandTotals.total_gross_sales)}</TableCell>
                                          <TableCell className="text-center">{formatAmount(grandTotals.total_net_sales_after_void)}</TableCell>

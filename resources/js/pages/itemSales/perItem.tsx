@@ -445,7 +445,7 @@ const [isExcelLoading, setIsExcelLoading] = useState(false);
                                                             if (item.combo_items && item.combo_items.length > 0) {
                                                                 item.combo_items.forEach((comboItem, comboIndex) => {
                                                                     rows.push(
-                                                                        <TableRow key={`combo-${index}-${comboIndex}`} className="bg-gray-50">
+                                                                        <TableRow key={`combo-${index}-${comboIndex}`} className="bg-primary-foreground">
                                                                             <TableCell className="pl-8">└ {comboItem.product_code}</TableCell>
                                                                             <TableCell className="italic">{comboItem.description}</TableCell>
                                                                             <TableCell>{comboItem.total_quantity}</TableCell>

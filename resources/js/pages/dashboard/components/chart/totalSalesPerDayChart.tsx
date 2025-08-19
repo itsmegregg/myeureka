@@ -85,7 +85,7 @@ const TotalSalesPerDayChart: React.FC<Props> = ({ data, loading, error }) => {
     },
     plotOptions: {
       column: {
-        color: getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim() || '#e74c3c', // Use primary color from CSS variable, fallback to default
+        color: "#eb3b5a", // Use primary color from CSS variable, fallback to default
         pointPadding: 0.2,
         borderWidth: 0,
         borderRadius:3,
