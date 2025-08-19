@@ -129,15 +129,16 @@ export default function ZreadIndex() {
     setZreads([]);
     try {
 
-      const response = await axios.get("/api/zreadDateRange", {
-        params: {
-          branch_name: selectedBranch?.branch_name ?? 'ALL',
-          from_date: selectedDateRange.from,
-          to_date: selectedDateRange.to,
-          store_name: selectedStore ?? 'ALL',
-          
-      },
-      });
+      const params = {
+        branch_name: selectedBranch?.branch_name ?? 'ALL',
+        from_date: selectedDateRange.from,
+        to_date: selectedDateRange.to,
+        store_name: selectedStore ?? 'ALL',
+      };
+
+      console.log('[ZREAD] Request params:', params);
+
+      const response = await axios.get("/api/zreadDateRange", { params });
 
 
 
