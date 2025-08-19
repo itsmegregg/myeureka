@@ -12,7 +12,7 @@ class VoidTxController extends Controller
     public function VoidTxData(Request $request)
     {
         try {
-            \Log::info('Request data:', $request->all()); // Log the incoming request
+            
     
             $validator = Validator::make($request->all(), [
                 'branch_name' => 'nullable|string',

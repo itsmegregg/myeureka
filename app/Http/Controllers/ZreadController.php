@@ -18,9 +18,10 @@ class ZreadController extends Controller
     public function searchByDateRange(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'branch_name' => 'required|string|max:255',
-            'from_date' => 'required|date_format:Y-m-d',
-            'to_date' => 'required|date_format:Y-m-d',
+            'branch_name' => 'nullable|string',
+            'store_name' => 'nullable|string',
+            'from_date' => 'required|date',
+            'to_date' => 'required|date'
         ]);
 
         if ($validator->fails()) {
@@ -41,6 +42,12 @@ class ZreadController extends Controller
                 ->whereBetween('date', [$from, $to])
                 ->orderBy('date', 'asc')
                 ->get();
+                if ($request->filled('branch_name') && strtoupper($request->branch_name) !== 'ALL') {
+                    $zreads->where('branch_name', trim($request->branch_name));
+                }
+                if ($request->filled('store_name') && strtoupper($request->store_name) !== 'ALL') {
+                    $zreads->where('store_name', trim($request->store_name));
+                }
 
             return response()->json([
                 'message' => 'Zreads fetched successfully',

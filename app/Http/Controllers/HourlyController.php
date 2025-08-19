@@ -16,7 +16,7 @@ class HourlyController extends Controller
             $validator = Validator::make($request->all(), [
                 'branch_name' => 'nullable|string',
                 'store_name' => 'nullable|string',
-                'terminal_number' => 'nullable|string',
+               
                 'from_date' => 'required|date',
                 'to_date' => 'required|date'
             ]);
@@ -41,10 +41,6 @@ class HourlyController extends Controller
 
             if ($request->has('store_name') && $request->store_name !== 'ALL') {
                 $query->where('header.store_name', $request->store_name);
-            }
-
-            if ($request->has('terminal_number') && $request->terminal_number !== 'ALL') {
-                $query->where('header.terminal_number', $request->terminal_number);
             }
 
             $query->select(
