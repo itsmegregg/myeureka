@@ -59,7 +59,7 @@ class UpdateSummaryTable extends Command
             $this->warn("No data found for {$date} in the header table. Skipping update.");
             return 0;
         }
-        
+        //test
         // Begin transaction
         DB::beginTransaction();
         
