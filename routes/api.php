@@ -104,7 +104,7 @@ Route::post('/run-command', [App\Http\Controllers\API\UpdateCommandController::c
 //receipt data
 Route::post('/receipt', [App\Http\Controllers\API\ReceiptController::class, 'store']);
 Route::post('/receipts/search-via-si-number', [App\Http\Controllers\API\ReceiptController::class, 'searchViaSiNumber']);
-Route::post('/receipts/search-by-date-range', [App\Http\Controllers\API\ReceiptController::class, 'searchByDateRange']);
+Route::get('/receipts/search-by-date-range', [App\Http\Controllers\API\ReceiptController::class, 'searchByDateRange']);
 Route::post('/receipts/download-consolidated', [App\Http\Controllers\API\ReceiptController::class, 'downloadConsolidated']);
 // Route::get('/receipt', [ReceiptController::class, 'index']);
 

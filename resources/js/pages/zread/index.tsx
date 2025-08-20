@@ -11,6 +11,7 @@ import axios from "axios";
 import { Eye, FileText, File as FileIcon, Search } from "lucide-react";
 import { format as formatDate } from "date-fns";
 import { useStore } from "@/store/useStore";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface ZreadItem {
   id: number;
@@ -121,6 +122,41 @@ export default function ZreadIndex() {
  
       const { selectedStore } = useStore();
 
+  // Viewer Dialog state
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [viewerIsText, setViewerIsText] = useState(true);
+  const [viewerText, setViewerText] = useState("");
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState<string | null>(null);
+
+  async function openViewer(item: ZreadItem) {
+    setViewerTitle(`Z-Read: ${item.branch_name} — ${item.date}`);
+    setViewerOpen(true);
+    setViewerLoading(true);
+    setViewerText("");
+    setViewerUrl(null);
+
+    try {
+      const res = await fetch(viewUrl(item.file_path));
+      if (!res.ok) throw new Error("Zread file not found");
+      const type = res.headers.get("content-type") || "";
+      if (type.includes("text")) {
+        const txt = await res.text();
+        setViewerIsText(true);
+        setViewerText(txt);
+      } else {
+        setViewerIsText(false);
+        setViewerUrl(viewUrl(item.file_path));
+      }
+    } catch (e) {
+      setViewerIsText(true);
+      setViewerText("Unable to load preview.");
+    } finally {
+      setViewerLoading(false);
+    }
+  }
+
   const searchByDateRange = async () => {
 
 
@@ -198,7 +234,7 @@ export default function ZreadIndex() {
                                 <div className="text-xs text-muted-foreground break-all">{z.file_path}</div>
                               </div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <Button variant="outline" size="sm" onClick={() => window.open(href, "_blank")}>
+                                <Button variant="outline" size="sm" onClick={() => openViewer(z)}>
                                   <Eye className="size-4 mr-2" /> View
                                 </Button>
                                 <Button variant="ghost" size="sm" onClick={() => downloadTxt(z.file_path, baseName)}>
@@ -222,6 +258,29 @@ export default function ZreadIndex() {
           </div>
         </div>
       </div>
+      {/* Viewer Dialog */}
+      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{viewerTitle || "Z-Read Viewer"}</DialogTitle>
+            <DialogDescription>Preview of the z-read file.</DialogDescription>
+          </DialogHeader>
+          <div className="min-h-40 max-h-[70vh] overflow-auto border rounded-md bg-muted/10">
+            {viewerLoading && (
+              <div className="p-4 text-sm text-muted-foreground">Loading...</div>
+            )}
+            {!viewerLoading && viewerIsText && (
+              <pre className="p-4 text-xs whitespace-pre-wrap break-words">{viewerText}</pre>
+            )}
+            {!viewerLoading && !viewerIsText && viewerUrl && (
+              <iframe src={viewerUrl ?? undefined} title="Z-Read Preview" className="w-full h-[70vh]" />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setViewerOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

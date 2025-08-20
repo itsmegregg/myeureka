@@ -185,8 +185,9 @@ class ReceiptController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'branch_name' => 'required|string|max:255',
-            'from' => ['required','string','regex:/^\\d{8}$/'],
-            'to' => ['required','string','regex:/^\\d{8}$/'],
+            // Accept either YYYYMMDD or YYYY-MM-DD
+            'from_date' => ['required','string','regex:/^(\\d{8}|\\d{4}-\\d{2}-\\d{2})$/'],
+            'to_date' => ['required','string','regex:/^(\\d{8}|\\d{4}-\\d{2}-\\d{2})$/'],
         ]);
 
         if ($validator->fails()) {
@@ -198,15 +199,22 @@ class ReceiptController extends Controller
 
         try {
             $branch = $request->branch_name;
-            $from = $request->from;
-            $to = $request->to;
+            // Normalize to YYYYMMDD (remove dashes if present)
+            $from = preg_replace('/-/', '', $request->from_date);
+            $to = preg_replace('/-/', '', $request->to_date);
 
             // Ensure from <= to
             if ($from > $to) {
                 [$from, $to] = [$to, $from];
             }
 
-            $receipts = Receipt::where('branch_name', $branch)
+            // Build query; if branch is 'ALL', skip branch filter
+            $query = Receipt::query();
+            if (strtoupper(trim($branch)) !== 'ALL') {
+                $query->where('branch_name', $branch);
+            }
+
+            $receipts = $query
                 ->whereBetween('date', [$from, $to])
                 ->orderBy('date', 'asc')
                 ->orderBy('si_number', 'asc')
@@ -235,8 +243,8 @@ class ReceiptController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'branch_name' => 'required|string|max:255',
-            'from' => ['required','string','regex:/^\\d{8}$/'],
-            'to' => ['required','string','regex:/^\\d{8}$/'],
+            'from_date' => ['required','string','regex:/^\\d{8}$/'],
+            'to_date' => ['required','string','regex:/^\\d{8}$/'],
         ]);
 
         if ($validator->fails()) {
@@ -248,8 +256,8 @@ class ReceiptController extends Controller
 
         try {
             $branch = $request->branch_name;
-            $from = $request->from;
-            $to = $request->to;
+            $from = $request->from_date;
+            $to = $request->to_date;
             if ($from > $to) { [$from, $to] = [$to, $from]; }
 
             $receipts = Receipt::where('branch_name', $branch)

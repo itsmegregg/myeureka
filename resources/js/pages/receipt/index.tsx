@@ -15,7 +15,9 @@ import axios from 'axios';
 import { Eye } from 'lucide-react';
 import { FileText } from "lucide-react";
 import { useDateRange } from "@/store/useDateRange";
-import { format as formatDate } from "date-fns";
+import { format, format as formatDate } from "date-fns";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useStore } from "@/store/useStore";
 
 
 interface Receipt {
@@ -35,8 +37,23 @@ export default function ReceiptsIndex() {
     const [loading, setLoading] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const [error, setError] = useState('');
-    const {selectedBranch} = useBranchStore();
-    const { dateRange } = useDateRange();
+
+
+      const { dateRange: selectedDateRange } = useDateRange();
+      const { dateRange } = useDateRange();
+    
+    
+          const { selectedBranch } = useBranchStore();
+     
+          const { selectedStore } = useStore();
+
+    // Modal viewer state
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerTitle, setViewerTitle] = useState('');
+    const [viewerLoading, setViewerLoading] = useState(false);
+    const [viewerText, setViewerText] = useState<string | null>(null);
+    const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+    const [viewerIsText, setViewerIsText] = useState<boolean>(true);
 
     function dedupe(items: Receipt[]): Receipt[] {
         const seen = new Set<string>();
@@ -53,6 +70,38 @@ export default function ReceiptsIndex() {
 
     function viewUrl(path: string) {
         return `/${path}`;
+    }
+
+    async function openViewer(receipt: Receipt) {
+        const href = viewUrl(receipt.file_path);
+        setViewerTitle(`Receipt ${receipt.si_number} • ${receipt.branch_name}`);
+        setViewerOpen(true);
+        setViewerLoading(true);
+        setViewerText(null);
+        setViewerUrl(null);
+        try {
+            const res = await fetch(href);
+            if (!res.ok) {
+                setViewerIsText(true);
+                setViewerText('Unable to load receipt content. The file may not exist.');
+                return;
+            }
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('text') || ct.includes('json') || ct.includes('xml')) {
+                const text = await res.text();
+                setViewerIsText(true);
+                setViewerText(text);
+            } else {
+                // Non-text: preview via iframe
+                setViewerIsText(false);
+                setViewerUrl(href);
+            }
+        } catch (e) {
+            setViewerIsText(true);
+            setViewerText('Error fetching receipt content.');
+        } finally {
+            setViewerLoading(false);
+        }
     }
 
     async function downloadTxt(path: string, filename: string) {
@@ -107,23 +156,22 @@ export default function ReceiptsIndex() {
     };
 
     async function downloadConsolidated() {
-        if (!selectedBranch?.branch_name || !dateRange.from || !dateRange.to) {
-            setError('Please select a Branch and a Date Range');
-            return;
-        }
+      
         setError('');
         setDownloading(true);
         try {
-            const from = toYyyyMmDdString(dateRange.from);
-            const to = toYyyyMmDdString(dateRange.to);
-            const response = await axios.post('/api/receipts/download-consolidated', {
-                branch_name: selectedBranch.branch_name,
-                from,
-                to,
-            }, { responseType: 'blob' });
+           
+      const params = {
+        branch_name: selectedBranch?.branch_name ?? 'ALL',
+        from_date: selectedDateRange.from,
+        to_date: selectedDateRange.to,
+        store_name: selectedStore ?? 'ALL',
+      };
+
+            const response = await axios.post('/api/receipts/download-consolidated', params, { responseType: 'blob' });
 
             const contentDisposition = response.headers['content-disposition'] as string | undefined;
-            let suggested = `receipts-${selectedBranch.branch_name}-${from}-${to}.txt`;
+            let suggested = `receipts-${selectedBranch?.branch_name}-${selectedDateRange.from}-${selectedDateRange.to}.txt`;
             if (contentDisposition) {
                 const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(contentDisposition);
                 const filename = decodeURIComponent(match?.[1] || match?.[2] || '');
@@ -151,22 +199,23 @@ export default function ReceiptsIndex() {
     }
 
     const searchByDateRange = async () => {
-        if (!selectedBranch?.branch_name || !dateRange.from || !dateRange.to) {
-            setError('Please select a Branch and a Date Range');
-            return;
-        }
-
+  
         setLoading(true);
         setError('');
+
+        
         try {
-            const from = toYyyyMmDdString(dateRange.from);
-            const to = toYyyyMmDdString(dateRange.to);
-            const response = await axios.post('/api/receipts/search-by-date-range', {
-                branch_name: selectedBranch.branch_name,
-                from,
-                to,
-            });
+       
+            const params = {
+                branch_name: selectedBranch?.branch_name ?? 'ALL',
+                from_date: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
+                to_date: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '',
+                store_name: selectedStore ?? 'ALL',
+            };
+
+            const response = await axios.get('/api/receipts/search-by-date-range', { params });
             setReceipts(dedupe(response.data.data || []));
+            console.log(params)
             if (!response.data.data || response.data.data.length === 0) {
                 setError('No receipts found for the selected range.');
             }
@@ -254,7 +303,7 @@ export default function ReceiptsIndex() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(href, '_blank')}
+                  onClick={() => openViewer(receipt)}
                 >
                   <Eye className="size-4 mr-2" /> View
                 </Button>
@@ -306,7 +355,7 @@ export default function ReceiptsIndex() {
                                 {receipts.length > 0 && (
                                     <div className="grid grid-cols-4 gap-4 mt-5">
                                         {receipts.map((receipt: Receipt) => {
-                                            const baseName = `receipt-${receipt.si_number}-${receipt.branch_name}-${(receipt.type || 'general')}`;
+                                            const baseName = `receipt-${receipt.si_number}-${receipt.branch_name}-${receipt.type || 'general'}`;
                                             const href = viewUrl(receipt.file_path);
                                             return (
                                                 <Card key={receipt.id} className="border-muted/50">
@@ -326,7 +375,7 @@ export default function ReceiptsIndex() {
                                                                 <div className="text-xs text-muted-foreground break-all">{receipt.file_path}</div>
                                                             </div>
                                                             <div className="flex flex-wrap items-center gap-2">
-                                                                <Button variant="outline" size="sm" onClick={() => window.open(href, '_blank')}>
+                                                                <Button variant="outline" size="sm" onClick={() => openViewer(receipt)}>
                                                                     <Eye className="size-4 mr-2" /> View
                                                                 </Button>
                                                                 <Button variant="ghost" size="sm" onClick={() => downloadTxt(receipt.file_path, baseName)}>
@@ -341,13 +390,36 @@ export default function ReceiptsIndex() {
                                         })}
                                     </div>
                                 )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                </Tabs>
-            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+        </div>
 
+        {/* Viewer Dialog */}
+        <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>{viewerTitle || 'Receipt Viewer'}</DialogTitle>
+                    <DialogDescription>Preview of the receipt file.</DialogDescription>
+                </DialogHeader>
+                <div className="min-h-40 max-h-[70vh] overflow-auto border rounded-md bg-muted/10">
+                    {viewerLoading && (
+                        <div className="p-4 text-sm text-muted-foreground">Loading...</div>
+                    )}
+                    {!viewerLoading && viewerIsText && (
+                        <pre className="p-4 text-xs whitespace-pre-wrap break-words">{viewerText}</pre>
+                    )}
+                    {!viewerLoading && !viewerIsText && viewerUrl && (
+                        <iframe src={viewerUrl ?? undefined} title="Receipt Preview" className="w-full h-[70vh]" />
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button variant="secondary" onClick={() => setViewerOpen(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
-        </AppLayout>
-    );
+    </AppLayout>
+);
 }
