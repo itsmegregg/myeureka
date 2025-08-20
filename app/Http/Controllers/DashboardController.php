@@ -37,17 +37,22 @@ class DashboardController extends Controller
             $endDate = \Carbon\Carbon::createFromFormat('Y-m', $month)->endOfMonth()->toDateString();
             
             // Calculate Average Sales Per Customer
-            $totals = Header::query()
+            $totals = DB::table('header as h')
+                ->join('payment_details as pd', function ($join) {
+                    $join->on('h.si_number', '=', 'pd.si_number')
+                         ->on('h.branch_name', '=', 'pd.branch_name')
+                         ->on('h.store_name', '=', 'pd.store_name');
+                })
                 ->select(
-                    DB::raw('SUM(CAST(header.net_amount AS NUMERIC) + CAST(header.service_charge AS NUMERIC)) as total_amount'),
-                    DB::raw('SUM(CAST(header.guest_count AS NUMERIC)) as total_guests')
+                    DB::raw('SUM(CAST(pd.amount AS NUMERIC)) as total_amount'),
+                    DB::raw('SUM(CAST(h.guest_count AS NUMERIC)) as total_guests')
                 )
-                ->whereBetween('header.date', [$startDate, $endDate])
+                ->whereBetween('h.date', [$startDate, $endDate])
                 ->when($concept_name !== 'ALL' && $concept_name !== null, function ($query) use ($concept_name) {
-                    $query->where('header.store_name', $concept_name);
+                    $query->where('h.store_name', $concept_name);
                 })
                 ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
-                    $query->where('header.branch_name', $branch_name);
+                    $query->where('h.branch_name', $branch_name);
                 })
                 ->first();
                 
