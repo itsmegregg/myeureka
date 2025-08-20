@@ -202,3 +202,21 @@ class DashboardController extends Controller
         }
     }
 }
+
+
+// WITH transaction_data AS (
+//     SELECT 
+//         MIN(CAST(si_from AS NUMERIC)) as min_si,
+//         MAX(CAST(si_to AS NUMERIC)) as max_si,
+//         COUNT(DISTINCT date) as total_days
+//     FROM daily_summary
+//     WHERE date BETWEEN '2025-08-01' AND '2025-08-30'
+//       AND branch_name = 'DOUBLE DRAGON'  
+//       AND store_name = 'RAMEN KURODA'
+// )
+// SELECT 
+//     min_si,
+//     max_si,
+//     total_days,
+//     (max_si - min_si) + 1 as total_transactions
+// FROM transaction_data
