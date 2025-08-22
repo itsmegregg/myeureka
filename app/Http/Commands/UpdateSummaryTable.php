@@ -16,7 +16,8 @@ class UpdateSummaryTable extends Command
     protected $signature = 'summary:update {date? : Date to update (YYYY-MM-DD format, defaults to yesterday)}
                            {--all : Update all dates from the entire history}
                            {--start= : Start date for range update (YYYY-MM-DD format)}
-                           {--end= : End date for range update (YYYY-MM-DD format)}';
+                           {--end= : End date for range update (YYYY-MM-DD format)}
+                           {--branch= : Branch name to limit processing}';
 
     /**
      * The console command description.
@@ -51,6 +52,7 @@ class UpdateSummaryTable extends Command
     protected function updateSingleDate($date)
     {
         $this->info("Updating summary table for date: {$date}");
+        $branchFilter = $this->option('branch');
         
         // Check if data exists for this date
         $hasData = DB::table('header')->where('date', $date)->exists();
@@ -65,12 +67,12 @@ class UpdateSummaryTable extends Command
         
         try {
             // Delete existing records for this date (to handle updates)
-            DB::table('item_details_daily_summary')
-                ->where('date', $date)
-                ->delete();
+            $delete = DB::table('item_details_daily_summary')->where('date', $date);
+            if ($branchFilter) { $delete->where('branch_name', $branchFilter); }
+            $delete->delete();
             
             // Insert aggregated data
-            $affected = DB::insert("
+            $query = "
                 INSERT INTO item_details_daily_summary (
                     date, 
                     branch_name, 
@@ -94,14 +96,18 @@ class UpdateSummaryTable extends Command
                               AND id.terminal_number = h.terminal_number 
                               AND id.branch_name = h.branch_name
                 JOIN product p ON id.product_code = p.product_code
-                WHERE h.date = ?
+                WHERE h.date = ?";
+            $params = [$date];
+            if ($branchFilter) { $query .= " AND id.branch_name = ?"; $params[] = $branchFilter; }
+            $query .= "
                 GROUP BY 
                     h.date,
                     id.branch_name, 
                     id.store_name,
                     p.category_code,
                     id.product_code
-            ", [$date]);
+            ";
+            $affected = DB::insert($query, $params);
             
             // Commit the transaction
             DB::commit();
@@ -123,6 +129,7 @@ class UpdateSummaryTable extends Command
     {
         $startDate = $this->option('start');
         $endDate = $this->option('end');
+        $branchFilter = $this->option('branch');
         
         // Validate date range inputs
         if (!$startDate && !$endDate) {
@@ -189,12 +196,12 @@ class UpdateSummaryTable extends Command
             
             try {
                 // Delete existing records for this date (to handle updates)
-                DB::table('item_details_daily_summary')
-                    ->where('date', $date)
-                    ->delete();
+                $delete = DB::table('item_details_daily_summary')->where('date', $date);
+                if ($branchFilter) { $delete->where('branch_name', $branchFilter); }
+                $delete->delete();
                 
                 // Insert aggregated data
-                DB::insert("
+                $query = "
                     INSERT INTO item_details_daily_summary (
                         date, 
                         branch_name, 
@@ -218,14 +225,18 @@ class UpdateSummaryTable extends Command
                                   AND id.terminal_number = h.terminal_number 
                                   AND id.branch_name = h.branch_name
                     JOIN product p ON id.product_code = p.product_code
-                    WHERE h.date = ?
+                    WHERE h.date = ?";
+                $params = [$date];
+                if ($branchFilter) { $query .= " AND id.branch_name = ?"; $params[] = $branchFilter; }
+                $query .= "
                     GROUP BY 
                         h.date,
                         id.branch_name, 
                         id.store_name,
                         p.category_code,
                         id.product_code
-                ", [$date]);
+                ";
+                DB::insert($query, $params);
                 
                 DB::commit();
                 $successCount++;
@@ -257,14 +268,25 @@ class UpdateSummaryTable extends Command
     protected function updateAllDates()
     {
         $this->info('Starting to update summary table for all dates...');
+        $branchFilter = $this->option('branch');
         
-        // Clear the summary table first
-        if ($this->confirm('This will delete all existing data in the summary table. Continue?', true)) {
-            DB::table('item_details_daily_summary')->truncate();
-            $this->info('Summary table cleared.');
+        // Clear the summary table first (respect branch when provided)
+        if ($branchFilter) {
+            if ($this->confirm("This will delete existing summary rows for branch '{$branchFilter}'. Continue?", true)) {
+                DB::table('item_details_daily_summary')->where('branch_name', $branchFilter)->delete();
+                $this->info("Summary rows for branch '{$branchFilter}' cleared.");
+            } else {
+                $this->info('Operation cancelled.');
+                return 1;
+            }
         } else {
-            $this->info('Operation cancelled.');
-            return 1;
+            if ($this->confirm('This will delete all existing data in the summary table. Continue?', true)) {
+                DB::table('item_details_daily_summary')->truncate();
+                $this->info('Summary table cleared.');
+            } else {
+                $this->info('Operation cancelled.');
+                return 1;
+            }
         }
         
         // Get all distinct dates from header
@@ -290,8 +312,8 @@ class UpdateSummaryTable extends Command
             DB::beginTransaction();
             
             try {
-                // Insert aggregated data
-                DB::insert("
+                // Insert aggregated data (optionally restricted by branch)
+                $query = "
                     INSERT INTO item_details_daily_summary (
                         date, 
                         branch_name, 
@@ -315,14 +337,18 @@ class UpdateSummaryTable extends Command
                                   AND id.terminal_number = h.terminal_number 
                                   AND id.branch_name = h.branch_name
                     JOIN product p ON id.product_code = p.product_code
-                    WHERE h.date = ?
+                    WHERE h.date = ?";
+                $params = [$date];
+                if ($branchFilter) { $query .= " AND id.branch_name = ?"; $params[] = $branchFilter; }
+                $query .= "
                     GROUP BY 
                         h.date,
                         id.branch_name, 
                         id.store_name,
                         p.category_code,
                         id.product_code
-                ", [$date]);
+                ";
+                DB::insert($query, $params);
                 
                 DB::commit();
                 $successCount++;

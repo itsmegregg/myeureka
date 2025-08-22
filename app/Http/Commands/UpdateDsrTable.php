@@ -17,7 +17,8 @@ class UpdateDsrTable extends Command
                            {--all : Update all dates from the entire history}
                            {--previous : Update the previous day\'s data}
                            {--start= : Start date for range update (YYYY-MM-DD format)}
-                           {--end= : End date for range update (YYYY-MM-DD format)}';
+                           {--end= : End date for range update (YYYY-MM-DD format)}
+                           {--branch= : Branch name to limit processing (used with --all)}';
 
     /**
      * The console command description.
@@ -383,13 +384,25 @@ class UpdateDsrTable extends Command
     {
         $this->info('Starting to update DSR table for all dates...');
         
-        // Clear the summary table first
-        if ($this->confirm('This will delete all existing data in the DSR table. Continue?', true)) {
-            DB::table('dsr')->truncate();
-            $this->info('DSR table cleared.');
+        $branchFilter = $this->option('branch');
+        
+        // Clear existing data first (respect branch filter when provided)
+        if ($branchFilter) {
+            if ($this->confirm("This will delete existing DSR rows for branch '{$branchFilter}'. Continue?", true)) {
+                DB::table('dsr')->where('branch_name', $branchFilter)->delete();
+                $this->info("DSR rows for branch '{$branchFilter}' cleared.");
+            } else {
+                $this->info('Operation cancelled.');
+                return 1;
+            }
         } else {
-            $this->info('Operation cancelled.');
-            return 1;
+            if ($this->confirm('This will delete all existing data in the DSR table. Continue?', true)) {
+                DB::table('dsr')->truncate();
+                $this->info('DSR table cleared.');
+            } else {
+                $this->info('Operation cancelled.');
+                return 1;
+            }
         }
         
         // Get all distinct dates from daily_summary
@@ -415,8 +428,8 @@ class UpdateDsrTable extends Command
             DB::beginTransaction();
             
             try {
-                // Insert aggregated data
-                DB::insert("INSERT INTO dsr (
+                // Insert aggregated data (optionally restricted by branch)
+                $query = "INSERT INTO dsr (
                         date,
                         branch_name,
                         store_name,
@@ -495,7 +508,15 @@ class UpdateDsrTable extends Command
                          AND h.terminal_number = tis.terminal_number
                          AND h.branch_name = tis.branch_name
                          AND h.store_name = tis.store_name
-                    WHERE ds.date = ?
+                    WHERE ds.date = ?";
+
+                $params = [$date];
+                if ($branchFilter) {
+                    $query .= " AND ds.branch_name = ?";
+                    $params[] = $branchFilter;
+                }
+
+                $query .= "
                     GROUP BY
                         ds.date,
                         ds.branch_name,
@@ -506,7 +527,9 @@ class UpdateDsrTable extends Command
                         ds.old_grand_total,
                         ds.new_grand_total,
                         ds.z_read_counter
-                ", [$date]);
+                ";
+
+                DB::insert($query, $params);
                 
                 DB::commit();
                 $successCount++;

@@ -205,7 +205,7 @@ export default function PerItem() {
                     product.combo_items.forEach((combo: any) => {
                         tableData.push([
                             `  - ${combo.product_code}`,
-                            `  ${combo.description}`,
+                            `  ${combo.product_description}`,
                             combo.total_quantity,
                             Number(combo.net_sales).toFixed(2)
                         ]);
@@ -272,7 +272,7 @@ export default function PerItem() {
                     product.combo_items.forEach((combo: any) => {
                         excelData.push([
                             `  - ${combo.product_code}`,
-                            `  ${combo.description}`,
+                            `  ${combo.product_description}`,
                             combo.total_quantity,
                             Number(combo.net_sales).toFixed(2)
                         ]);
