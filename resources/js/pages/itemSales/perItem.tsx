@@ -123,13 +123,19 @@ export default function PerItem() {
         }
         
         try {
-            // Use the same endpoint as fetchAllData to get all items at once
             const response = await axios.get('/api/item-sales/product-mix', {
                 params: paramsData
             });
             
             // Set products data from response
-            setProductsData(response.data.data || []);
+            // Handle both the old format (with data.data) and new format (with data directly)
+            if (response.data && response.data.data) {
+                setProductsData(response.data.data);
+                console.log(`Loaded ${response.data.data.length} product records`);
+            } else {
+                console.error('Unexpected response format:', response.data);
+                setProductsData([]);
+            }
             
         } catch (error) {
             console.error("Failed to fetch products:", error);

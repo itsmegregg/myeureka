@@ -87,7 +87,7 @@ class ItemSalesController extends Controller
         }
 
         // Fetch combo items for each combo product
-        $results->getCollection()->transform(function ($item) use ($startDate, $endDate, $branch, $store, $terminal) {
+        $results = $results->map(function ($item) use ($startDate, $endDate, $branch, $store, $terminal) {
             // Check if this is a combo product by looking for items that reference it as combo_main_code
             $comboItems = ItemDetail::select(
                 'item_details.product_code',
@@ -127,8 +127,18 @@ class ItemSalesController extends Controller
             return $item;
         });
 
-        // Use the ProductMixItemCollection to transform the results
-        return new ProductMixItemCollection($results);
+        // Return results as JSON directly since we're no longer using pagination
+        return response()->json([
+            'data' => $results,
+            'meta' => [
+                'from_date' => $startDate,
+                'to_date' => $endDate,
+                'branch' => $branch,
+                'store' => $store,
+                'product' => $product,
+                'terminal' => $terminal
+            ]
+        ]);
     }
 
     /**
