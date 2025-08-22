@@ -152,11 +152,10 @@ class ItemSalesController extends Controller
         $endDate = $request->input('to_date');
         $branch = strtoupper($request->input('branch_name', 'ALL'));
         $category = strtoupper($request->input('category_code', 'ALL'));
-        $store = strtoupper($request->input('store_name', 'ALL')); 
-        $terminal = strtoupper($request->input('terminal_number', 'ALL'));
+        $store = strtoupper($request->input('store_name', 'ALL'));
 
         try {
-            $data = $this->getProductMixCategoryData($startDate, $endDate, $branch, $category, $store, $terminal);
+            $data = $this->getProductMixCategoryData($startDate, $endDate, $branch, $category, $store);
             
             if (empty($data['groupedResults'])) {
                 return response()->json([
@@ -166,9 +165,8 @@ class ItemSalesController extends Controller
                         'from_date' => $startDate,
                         'to_date' => $endDate,
                         'branch' => $branch,
-                        'store_id' => $store,
-                        'category' => $category,
-                    'terminal' => $terminal
+                        'store_name' => $store,
+                        'category' => $category
                     ]
                 ]);
             }
@@ -180,9 +178,8 @@ class ItemSalesController extends Controller
                     'from_date' => $startDate,
                     'to_date' => $endDate,
                     'branch' => $branch,
-                    'store_id' => $store,
-                    'category' => $category,
-                    'terminal' => $terminal
+                    'concept_id' => $store,
+                    'category' => $category
                 ]
             ]);
         } catch (\Exception $e) {
@@ -196,7 +193,7 @@ class ItemSalesController extends Controller
     }
     
    
-    private function getProductMixCategoryData($startDate, $endDate, $branch, $category, $store, $terminal)
+    private function getProductMixCategoryData($startDate, $endDate, $branch, $category, $store)
 {
     // Use the summary table for main data
     $query = \App\Models\ItemDetailsDailySummary::select([ 
@@ -269,11 +266,10 @@ class ItemSalesController extends Controller
             DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
             DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
         )
-        ->join('header', function ($join) use ($terminal) {
+        ->join('header', function ($join) {
             $join->on('item_details.si_number', '=', 'header.si_number')
                  ->on('item_details.terminal_number', '=', 'header.terminal_number')
-                 ->on('item_details.branch_name', '=', 'header.branch_name')
-                 ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
+                 ->on('item_details.branch_name', '=', 'header.branch_name');
         })
         ->leftJoin('products', 'item_details.product_code', '=', 'products.product_code')
         ->where('item_details.combo_header', $item->product_code)
@@ -443,7 +439,7 @@ class ItemSalesController extends Controller
                     'from_date' => $startDate,
                     'to_date' => $endDate,
                     'branch' => $branch,
-                    'concept_id' => $store,
+                    'store_name' => $store,
                     'category' => $category
                 ]
             ]);

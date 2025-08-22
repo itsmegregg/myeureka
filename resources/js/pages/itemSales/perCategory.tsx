@@ -32,8 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import React from "react";
 import { IconFileTypeXls, IconFileTypePdf } from '@tabler/icons-react';
-import { useTerminalStore } from "@/store/useTerminal";
-import TerminalSelect from "@/components/public-components/terminal-select";
+// Terminal imports removed as they're no longer needed
 // Interface for combo items
 interface ComboItemProps {
     product_code: string;
@@ -66,7 +65,7 @@ interface ApiResponse {
         from_date: string;
         to_date: string;
         branch: string;
-        concept_id: string;
+        store_name: string;
         category: string;
     }
 }
@@ -78,7 +77,6 @@ export default function PerCategory() {
     const [isExcelLoading, setIsExcelLoading] = useState(false);
 
     const [error, setError] = useState<string | null>(null);
-    const {selectedTerminal} = useTerminalStore();
     const { selectedBranch } = useBranchStore();
     const { dateRange: selectedDateRange } = useDateRange();
     const { selectedStore } = useStore();
@@ -100,12 +98,11 @@ export default function PerCategory() {
         
         try {
             const paramsData = {
-                branch_id: selectedBranch?.branch_code ?? 'ALL',
-                store_id: selectedStore ?? 'ALL',
+                branch_name: selectedBranch?.branch_name ?? 'ALL',
+                store_name: selectedStore ?? 'ALL',
                 from_date: selectedDateRange.from ? format(selectedDateRange.from, 'yyyy-MM-dd') : format(new Date(), 'yyyy-01-01'),
                 to_date: selectedDateRange.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : format(new Date(), 'yyyy-12-31'),
-                category_code: selectedCategory ?? 'ALL',
-                terminal_number: selectedTerminal,
+                category_code: selectedCategory ?? 'ALL'
             };
             
             const response = await axios.get<ApiResponse>('/api/item-sales/product-mix-category', {
@@ -146,7 +143,6 @@ export default function PerCategory() {
             excelData.push(['']);
             excelData.push(['Branch:', selectedBranch?.branch_name || 'All Branches']);
             excelData.push(['Store:', selectedStore || 'All Stores']);
-            excelData.push(['Terminal:', selectedTerminal || 'All Terminals']);
             excelData.push(['Category:', selectedCategory || 'All Categories']);
             excelData.push([
                 'Period:',
@@ -216,9 +212,8 @@ export default function PerCategory() {
             // Generate filename with timestamp and filters
             const branchInfo = selectedBranch?.branch_name ? `_${selectedBranch.branch_name}` : '';
             const storeInfo = selectedStore ? `_${selectedStore}` : '';
-            const terminalInfo = selectedTerminal ? `_Terminal${selectedTerminal}` : '';
             const categoryInfo = selectedCategory ? `_${selectedCategory}` : '';
-            const filename = `Item_Sales_Per_Category${branchInfo}${storeInfo}${terminalInfo}${categoryInfo}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
+            const filename = `Item_Sales_Per_Category${branchInfo}${storeInfo}${categoryInfo}_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
             
             // Write the workbook and trigger download
             XLSX.writeFile(workbook, filename);
@@ -249,8 +244,7 @@ export default function PerCategory() {
             doc.setFontSize(10);
             doc.text(`Branch: ${selectedBranch?.branch_name || 'All Branches'}`, 14, 25);
             doc.text(`Store: ${selectedStore || 'All Stores'}`, 14, 30);
-            doc.text(`Terminal: ${selectedTerminal || 'All Terminals'}`, 14, 35);
-            doc.text(`Category: ${selectedCategory || 'All Categories'}`, 14, 40);
+            doc.text(`Category: ${selectedCategory || 'All Categories'}`, 14, 35);
             doc.text(`Period: ${selectedDateRange.from ? format(selectedDateRange.from, 'MMM dd, yyyy') : 'Start'} - ${selectedDateRange.to ? format(selectedDateRange.to, 'MMM dd, yyyy') : 'End'}`, 14, 45);
             doc.text(`Generated on: ${format(new Date(), 'MMM dd, yyyy hh:mm a')}`, 14, 50);
             
@@ -361,9 +355,8 @@ export default function PerCategory() {
             // Generate filename with timestamp and filters
             const branchInfo = selectedBranch?.branch_name ? `_${selectedBranch.branch_name}` : '';
             const storeInfo = selectedStore ? `_${selectedStore}` : '';
-            const terminalInfo = selectedTerminal ? `_Terminal${selectedTerminal}` : '';
             const categoryInfo = selectedCategory ? `_${selectedCategory}` : '';
-            const filename = `Item_Sales_Per_Category${branchInfo}${storeInfo}${terminalInfo}${categoryInfo}_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`;
+            const filename = `Item_Sales_Per_Category${branchInfo}${storeInfo}${categoryInfo}_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`;
             doc.save(filename);
             
         } catch (error) {
@@ -391,7 +384,6 @@ export default function PerCategory() {
                                           <BranchSelect />
                                             <DateRangePickernew />
                                             <CategorySelect />
-                                            {/* <TerminalSelect/> */}
                                             <Button
                                                 onClick={fetchAlldata}
                                                 disabled={isFetching}
