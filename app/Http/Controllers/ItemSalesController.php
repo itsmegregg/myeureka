@@ -66,8 +66,8 @@ class ItemSalesController extends Controller
         $productMix->groupBy('item_details.product_code', 'products.product_description')
                    ->orderBy('total_quantity', 'desc');
 
-        // Paginate the results with smaller page size
-        $results = $productMix->paginate($perPage);
+        // Get all results at once without pagination
+        $results = $productMix->get();
 
         if ($results->isEmpty()) {
             // Check if we have any data in the date range

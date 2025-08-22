@@ -24,7 +24,7 @@ import { useProduct } from "@/store/useProduct";
 import { useStore } from "@/store/useStore";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from "@/components/ui/pagination";
+// Pagination removed as we're displaying all data at once
 import ProductSelect from "@/components/public-components/product-select";
 import DateRangePickernew from "@/components/public-components/date-range-picker";
 
@@ -76,11 +76,8 @@ export default function PerItem() {
 
     const [productsData, setProductsData] = useState<ProductProps[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-const [isPdfLoading, setIsPdfLoading] = useState(false);
-const [isExcelLoading, setIsExcelLoading] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(10); // You can make this configurable
-    const [totalItems, setTotalItems] = useState(0);
+    const [isPdfLoading, setIsPdfLoading] = useState(false);
+    const [isExcelLoading, setIsExcelLoading] = useState(false);
 
     const {selectedBranch} = useBranchStore();
     const {dateRange: selectedDateRange} = useDateRange();
@@ -90,6 +87,7 @@ const [isExcelLoading, setIsExcelLoading] = useState(false);
     
     // Fetch data on component mount
 
+    // Used for export functionality
     const fetchAllData = async () => {
         // Prepare parameters for API call
         const paramsData: any = {
@@ -101,12 +99,8 @@ const [isExcelLoading, setIsExcelLoading] = useState(false);
             terminal_number: selectedTerminal,
         };
         
-        if (selectedProduct) {
-            paramsData.product_code = selectedProduct;
-        }
-        
-        // Fetch all data for export
-        const response = await axios.get('/api/item-sales/product-mix-all', {
+        // Use the same endpoint that now returns all data
+        const response = await axios.get('/api/item-sales/product-mix', {
             params: paramsData
         });
         
@@ -117,7 +111,7 @@ const [isExcelLoading, setIsExcelLoading] = useState(false);
         return response.data;
     };
 
-    const productMixData = async (page: number) => {
+    const productMixData = async () => {
         setIsLoading(true);
         const paramsData = {
             branch_name: selectedBranch?.branch_name ?? 'ALL',
@@ -125,57 +119,27 @@ const [isExcelLoading, setIsExcelLoading] = useState(false);
             to_date: selectedDateRange.to ? format(selectedDateRange.to, 'yyyy-MM-dd') : undefined,
             product_code: selectedProduct,
             store_name: selectedStore ?? 'ALL',
-            terminal_number: selectedTerminal ?? 'ALL',
-            page: page,
-            per_page: itemsPerPage,
+            terminal_number: selectedTerminal ?? 'ALL'
         }
         
         try {
+            // Use the same endpoint as fetchAllData to get all items at once
             const response = await axios.get('/api/item-sales/product-mix', {
                 params: paramsData
             });
             
-          
-            
             // Set products data from response
-            setProductsData(response.data.data);
+            setProductsData(response.data.data || []);
             
-            // Our new ProductMixItemCollection structure has both direct total and meta.total
-            if (typeof response.data.total === 'number') {
-                console.log('Total items from direct total:', response.data.total);
-                setTotalItems(response.data.total);
-            }
-            // Fallback to meta.total if available
-            else if (response.data.meta && typeof response.data.meta.total === 'number') {
-                console.log('Total items from meta:', response.data.meta.total);
-                setTotalItems(response.data.meta.total);
-            }
-            // Last fallback - calculate from meta pagination info
-            else if (response.data.meta && response.data.meta.last_page && response.data.meta.per_page) {
-                const calculatedTotal = response.data.meta.last_page * response.data.meta.per_page;
-                console.log('Calculated total items:', calculatedTotal);
-                setTotalItems(calculatedTotal);
-            } else {
-                console.log('No total items found in response');
-                setTotalItems(0);
-            }
         } catch (error) {
             console.error("Failed to fetch products:", error);
+            setProductsData([]);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    
-    
-
-    const handlePageChange = (newPage: number) => {
-        if (newPage > 0 && newPage <= totalPages) {
-            setCurrentPage(newPage);
-            productMixData(newPage);
-        }
-    };
+    // Pagination has been removed as we're displaying all data at once
 
     // Function to export data to PDF
     const handleExportPDF = async () => {
@@ -353,8 +317,7 @@ const [isExcelLoading, setIsExcelLoading] = useState(false);
                                         <ProductSelect/>
                                         {/* <TerminalSelect/> */}
                                         <Button onClick={() => {
-                                            setCurrentPage(1); // Reset to first page when search is clicked
-                                            productMixData(1);
+                                            productMixData();
                                         }}  disabled={isLoading}
                                             className="w-full md:w-auto flex items-center justify-center gap-2 flex-grow"
                                         >
@@ -421,7 +384,7 @@ const [isExcelLoading, setIsExcelLoading] = useState(false);
                                                 <TableBody>
                                                     {isLoading ? (
                                                         // Loading skeleton rows
-                                                        [...Array(itemsPerPage)].map((_, i) => (
+                                                        [...Array(10)].map((_, i) => (
                                                             <TableRow key={`loading-${i}`}>
                                                                 <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
                                                                 <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
@@ -466,94 +429,15 @@ const [isExcelLoading, setIsExcelLoading] = useState(false);
                                             </Table>
                                          
                                         </div>
-                                        {/* Shadcn Pagination Controls */}
+                                        {/* Result count display */}
                                         <div className="flex items-center justify-between py-4">
                                             <div>
-                                                {totalItems > 0 && (
+                                                {productsData.length > 0 && (
                                                     <p className="text-sm text-gray-700">
-                                                        Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                                                        <span className="font-medium">
-                                                            {Math.min(currentPage * itemsPerPage, totalItems)}
-                                                        </span> of{' '}
-                                                        <span className="font-medium">{totalItems}</span> results
+                                                        Showing <span className="font-medium">{productsData.length}</span> results
                                                     </p>
                                                 )}
                                             </div>
-                                            
-                                            {totalItems > 0 && (
-                                                <Pagination>
-                                                    <PaginationContent>
-                                                        <PaginationItem>
-                                                            <PaginationPrevious 
-                                                                onClick={() => handlePageChange(currentPage - 1)}
-                                                                className={currentPage === 1 || isLoading ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                                                            />
-                                                        </PaginationItem>
-                                                        
-                                                        {/* First page */}
-                                                        {currentPage > 2 && (
-                                                            <PaginationItem>
-                                                                <PaginationLink onClick={() => handlePageChange(1)}>
-                                                                    1
-                                                                </PaginationLink>
-                                                            </PaginationItem>
-                                                        )}
-                                                        
-                                                        {/* Ellipsis if needed */}
-                                                        {currentPage > 3 && (
-                                                            <PaginationItem>
-                                                                <PaginationEllipsis />
-                                                            </PaginationItem>
-                                                        )}
-                                                        
-                                                        {/* Previous page if not at start */}
-                                                        {currentPage > 1 && (
-                                                            <PaginationItem>
-                                                                <PaginationLink onClick={() => handlePageChange(currentPage - 1)}>
-                                                                    {currentPage - 1}
-                                                                </PaginationLink>
-                                                            </PaginationItem>
-                                                        )}
-                                                        
-                                                        {/* Current page */}
-                                                        <PaginationItem>
-                                                            <PaginationLink isActive>{currentPage}</PaginationLink>
-                                                        </PaginationItem>
-                                                        
-                                                        {/* Next page if not at end */}
-                                                        {currentPage < totalPages && (
-                                                            <PaginationItem>
-                                                                <PaginationLink onClick={() => handlePageChange(currentPage + 1)}>
-                                                                    {currentPage + 1}
-                                                                </PaginationLink>
-                                                            </PaginationItem>
-                                                        )}
-                                                        
-                                                        {/* Ellipsis if needed */}
-                                                        {currentPage < totalPages - 2 && (
-                                                            <PaginationItem>
-                                                                <PaginationEllipsis />
-                                                            </PaginationItem>
-                                                        )}
-                                                        
-                                                        {/* Last page */}
-                                                        {currentPage < totalPages - 1 && totalPages > 1 && (
-                                                            <PaginationItem>
-                                                                <PaginationLink onClick={() => handlePageChange(totalPages)}>
-                                                                    {totalPages}
-                                                                </PaginationLink>
-                                                            </PaginationItem>
-                                                        )}
-                                                        
-                                                        <PaginationItem>
-                                                            <PaginationNext 
-                                                                onClick={() => handlePageChange(currentPage + 1)}
-                                                                className={currentPage === totalPages || isLoading ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                                                            />
-                                                        </PaginationItem>
-                                                    </PaginationContent>
-                                                </Pagination>
-                                            )}
                                         </div>
                                     </div>
                             </div>
