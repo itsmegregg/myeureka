@@ -200,7 +200,7 @@ class DashboardController extends Controller
                     'daily_guest_counts' => $dailyGuestCounts,
                     'average_sales_per_day' => [
                         'average_sales' => $averageSales ? round($averageSales->average_sales, 2) : 0,
-                        'total_sales' => $averageSales ? round($averageSales->total_sales, 2) : 0,
+                       'total_sales' => round($totalSales, 2),
                         'total_days' => $averageSales ? $averageSales->total_days : 0
                     ],
                     'average_tx_per_day' => [

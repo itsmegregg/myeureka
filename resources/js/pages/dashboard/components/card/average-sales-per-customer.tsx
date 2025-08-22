@@ -31,8 +31,8 @@ export default function AverageSalesPerCustomer({ data, loading, error }: Averag
               className="text-2xl font-bold" 
               formatAsCurrency={true} 
             />
-            <h1 className="text-xs text-zinc-400">
-              Total Sales: {formatCurrency(data.total_sales || 0)} / Total Guests: {formatNumber(data.total_guests)}
+            <h1 className="text-xs text-muted-foreground">
+             {formatCurrency(data.total_sales || 0)} / Total Guests: {formatNumber(data.total_guests)}
             </h1>
           </div>
         )}

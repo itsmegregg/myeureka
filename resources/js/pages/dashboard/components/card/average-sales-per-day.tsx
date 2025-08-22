@@ -30,8 +30,8 @@ export default function AverageSalesPerDay({ data, loading, error }: AverageSale
                         {formatCurrency(data.average_sales || 0)}
                     </h1> */}
                     <CountAnimation number={data.average_sales || 0} className="text-2xl font-bold" formatAsCurrency={true}/>
-                    <h1 className="text-xs text-zinc-400">
-                        Total Sales: {formatCurrency(data.total_sales || 0)} / Total Days: {formatNumber(data.total_days)}
+                    <h1 className="text-xs text-muted-foreground">
+                      {formatCurrency(data.total_sales || 0)} / Total Days: {formatNumber(data.total_days)}
                     </h1>
                 </div>
             )}

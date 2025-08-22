@@ -31,7 +31,7 @@ export default function AverageTxPerDay({ data, loading, error }: AverageTxPerDa
                     </h1> */}
 
                     <CountAnimation number={data.average_transaction_per_day || 0} className="text-2xl font-bold" formatAsCurrency={false}/>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-xs text-muted-foreground">
                         {data.total_transaction.toLocaleString()} transactions over {data.total_days} days
                     </div>
                 </div>

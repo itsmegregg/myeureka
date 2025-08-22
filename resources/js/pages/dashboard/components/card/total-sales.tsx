@@ -36,7 +36,7 @@ export default function TotalSales(props: TotalSalesProps) {
                         {formatCurrency(data.total_sales || 0)}
                     </h1> */}
                     <CountAnimation number={data.total_sales || 0} className="text-2xl font-bold" formatAsCurrency={true}/>
-                    <h1 className="text-xs text-zinc-400">
+                    <h1 className="text-xs text-muted-foreground">
                         Period: {data.period?.formatted_month}
                     </h1>
                 </div>
