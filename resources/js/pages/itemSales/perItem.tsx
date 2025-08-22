@@ -34,7 +34,7 @@ import TerminalSelect from "@/components/public-components/terminal-select";
 
 interface ComboItem {
     product_code: string;
-    description: string;
+    product_description: string;
     total_quantity: number;
     net_sales: number;
 }
@@ -416,7 +416,7 @@ export default function PerItem() {
                                                                     rows.push(
                                                                         <TableRow key={`combo-${index}-${comboIndex}`} className="bg-primary-foreground">
                                                                             <TableCell className="pl-8">└ {comboItem.product_code}</TableCell>
-                                                                            <TableCell className="italic">{comboItem.description}</TableCell>
+                                                                            <TableCell className="italic">{comboItem.product_description   }</TableCell>
                                                                             <TableCell>{comboItem.total_quantity}</TableCell>
                                                                             <TableCell>{comboItem.net_sales === 0 ? '-' : Number(comboItem.net_sales).toFixed(2)}</TableCell>
                                                                         </TableRow>
