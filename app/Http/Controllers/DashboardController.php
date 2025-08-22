@@ -36,7 +36,7 @@ class DashboardController extends Controller
             $startDate = \Carbon\Carbon::createFromFormat('Y-m', $month)->startOfMonth()->toDateString();
             $endDate = \Carbon\Carbon::createFromFormat('Y-m', $month)->endOfMonth()->toDateString();
             
-            // Calculate Average Sales Per Customer
+            // Calculate total sales
             $totals = DB::table('header as h')
                 ->join('payment_details as pd', function ($join) {
                     $join->on('h.si_number', '=', 'pd.si_number')
@@ -44,8 +44,7 @@ class DashboardController extends Controller
                          ->on('h.store_name', '=', 'pd.store_name');
                 })
                 ->select(
-                    DB::raw('SUM(CAST(pd.amount AS NUMERIC)) as total_amount'),
-                    DB::raw('SUM(CAST(h.guest_count AS NUMERIC)) as total_guests')
+                    DB::raw('SUM(CAST(pd.amount AS NUMERIC)) as total_amount')
                 )
                 ->whereBetween('h.date', [$startDate, $endDate])
                 ->when($concept_name !== 'ALL' && $concept_name !== null, function ($query) use ($concept_name) {
@@ -54,10 +53,44 @@ class DashboardController extends Controller
                 ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
                     $query->where('h.branch_name', $branch_name);
                 })
+                ->whereNull('h.void_reason')
                 ->first();
                 
+            // Get guest count with daily breakdown using GROUPING SETS
+            $guestCountQuery = DB::table('header')
+                ->select(
+                    DB::raw('COALESCE(CAST(date AS text), \'Grand Total\') AS day'),
+                    DB::raw('SUM(CAST(guest_count AS numeric)) AS total_guest_count')
+                )
+                ->whereBetween('date', [$startDate, $endDate])
+                ->when($concept_name !== 'ALL' && $concept_name !== null, function ($query) use ($concept_name) {
+                    $query->where('store_name', $concept_name);
+                })
+                ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
+                    $query->where('branch_name', $branch_name);
+                })
+                ->whereNull('void_reason')
+                ->groupByRaw('GROUPING SETS (date, ())')
+                ->orderBy('day')
+                ->get();
+                
+            // Extract the grand total (last record should be 'Grand Total')
+            $totalGuests = 0;
+            $dailyGuestCounts = [];
+            
+            foreach ($guestCountQuery as $record) {
+                if ($record->day === 'Grand Total') {
+                    $totalGuests = $record->total_guest_count;
+                } else {
+                    $dailyGuestCounts[] = [
+                        'date' => $record->day,
+                        'date_formatted' => \Carbon\Carbon::parse($record->day)->format('DD Mon'),
+                        'total_guest_count' => $record->total_guest_count
+                    ];
+                }
+            }
+                
             $totalSales = $totals->total_amount ?? 0;
-            $totalGuests = $totals->total_guests ?? 0;
             $averageSalesPerCustomer = $totalGuests != 0 ? round($totalSales / $totalGuests, 2) : 0;
             
             // Calculate Average Sales Per Day
@@ -164,6 +197,7 @@ class DashboardController extends Controller
                             'concept' => $concept_name
                         ]
                     ],
+                    'daily_guest_counts' => $dailyGuestCounts,
                     'average_sales_per_day' => [
                         'average_sales' => $averageSales ? round($averageSales->average_sales, 2) : 0,
                         'total_sales' => $averageSales ? round($averageSales->total_sales, 2) : 0,
