@@ -75,7 +75,8 @@ class DiscountController extends Controller
                          ->on('item_details.terminal_number', '=', 'header.terminal_number')
                          ->on('item_details.branch_name', '=', 'header.branch_name');
                 })
-                ->whereNotNull('item_details.discount_code'); // Exclude NULL discount codes
+                ->whereNotNull('item_details.discount_code') // Exclude NULL discount codes
+                ->whereRaw("COALESCE(item_details.void_flag, '0') = '0'");
 
             // Filter by date range
             if ($request->has('from_date') && $request->has('to_date')) {
