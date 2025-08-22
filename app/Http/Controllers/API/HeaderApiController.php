@@ -52,7 +52,7 @@ class HeaderApiController extends Controller
                 'zero_rated_sales' => 'required|string',
                 'delivery_charge' => 'nullable|string',
                 'other_charges' => 'nullable|string',
-                'cashier_name' => 'required|string',
+                'cashier_name' => 'nullable|string',
                 'approved_by' => 'nullable|string',
                 'void_reason' => 'nullable|string',
             ]);
