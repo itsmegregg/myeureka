@@ -95,11 +95,10 @@ class ItemSalesController extends Controller
                 DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
                 DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
             )
-            ->join('header', function ($join) use ($terminal) {
+            ->join('header', function ($join) {
                 $join->on('item_details.si_number', '=', 'header.si_number')
                      ->on('item_details.terminal_number', '=', 'header.terminal_number')
-                     ->on('item_details.branch_name', '=', 'header.branch_name')
-                     ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
+                     ->on('item_details.branch_name', '=', 'header.branch_name');
             })
             ->leftJoin('products', function($join) {
                 $join->on('item_details.product_code', '=', 'products.product_code');
@@ -330,11 +329,10 @@ class ItemSalesController extends Controller
                 DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as quantity'),
                 DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
             ])
-            ->join('header', function ($join) use ($terminal) {
+            ->join('header', function ($join) {
                 $join->on('item_details.si_number', '=', 'header.si_number')
                      ->on('item_details.terminal_number', '=', 'header.terminal_number')
-                     ->on('item_details.branch_name', '=', 'header.branch_name')
-                     ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
+                     ->on('item_details.branch_name', '=', 'header.branch_name');
             })
             ->join('products', 'item_details.product_code', '=', 'products.product_code')
             ->join('categories', 'products.category_code', '=', 'categories.category_code')
@@ -403,11 +401,10 @@ class ItemSalesController extends Controller
                     DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
                     DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
                 )
-                ->join('header', function ($join) use ($terminal) {
+                ->join('header', function ($join) {
                     $join->on('item_details.si_number', '=', 'header.si_number')
                          ->on('item_details.terminal_number', '=', 'header.terminal_number')
-                         ->on('item_details.branch_name', '=', 'header.branch_name')
-                         ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
+                         ->on('item_details.branch_name', '=', 'header.branch_name');
                 })
                 ->leftJoin('products', 'item_details.product_code', '=', 'products.product_code')
                 ->where('item_details.combo_header', $item->product_code)
@@ -447,8 +444,7 @@ class ItemSalesController extends Controller
                     'to_date' => $endDate,
                     'branch' => $branch,
                     'concept_id' => $store,
-                    'category' => $category,
-                    'terminal' => $terminal
+                    'category' => $category
                 ]
             ]);
 
