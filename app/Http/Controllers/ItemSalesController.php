@@ -150,160 +150,146 @@ class ItemSalesController extends Controller
     {
         $startDate = $request->input('from_date');
         $endDate = $request->input('to_date');
-        $branch = strtoupper($request->input('branch_name', 'ALL'));
+        $branch = strtoupper($request->input('branch_id', 'ALL'));
         $category = strtoupper($request->input('category_code', 'ALL'));
-        $store = strtoupper($request->input('store_name', 'ALL'));
+        $store = strtoupper($request->input('concept_id', 'ALL')); // Changed from store_id to concept_id
 
         try {
-            $data = $this->getProductMixCategoryData($startDate, $endDate, $branch, $category, $store);
-            
-            if (empty($data['groupedResults'])) {
-                return response()->json([
-                    'message' => 'No data found in the selected date range',
-                    'data' => [],
-                    'meta' => [
-                        'from_date' => $startDate,
-                        'to_date' => $endDate,
-                        'branch' => $branch,
-                        'store_name' => $store,
-                        'category' => $category
-                    ]
-                ]);
+            $query = ItemDetail::select([
+                'categories.category_code',
+                'categories.category_description',
+                'item_details.product_code',
+                'products.product_description',
+                DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as quantity'),
+                DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
+            ])
+            ->join('header', function ($join) {
+                $join->on('item_details.si_number', '=', 'header.si_number')
+                     ->on('item_details.terminal_number', '=', 'header.terminal_number')
+                     ->on('item_details.branch_name', '=', 'header.branch_name');
+            })
+            ->join('products', 'item_details.product_code', '=', 'products.product_code')
+            ->join('categories', 'products.category_code', '=', 'categories.category_code')
+            ->whereBetween('header.date', [$startDate, $endDate])
+            ->when($store !== 'ALL', function ($q) use ($store) {
+                return $q->where('item_details.store_name', $store);
+            })
+            ->when($branch !== 'ALL', function ($q) use ($branch) {
+                return $q->where('item_details.branch_name', $branch);
+            })
+            ->when($category !== 'ALL', function ($q) use ($category) {
+                return $q->where('products.category_code', $category);
+            })
+            ->groupBy(
+                'categories.category_code',
+                'categories.category_description',
+                'item_details.product_code',
+                'products.product_description'
+            );
+
+            $results = $query->get();
+
+            if ($results->isEmpty()) {
+                // Check if we have any data in the date range
+                $hasData = Header::whereBetween('date', [$startDate, $endDate])->exists();
+                if (!$hasData) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'No data found in the selected date range',
+                        'data' => [],
+                        'meta' => [
+                            'from_date' => $startDate,
+                            'to_date' => $endDate,
+                            'branch' => $branch,
+                            'store' => $store,
+                            'category' => $category
+                        ]
+                    ]);
+                }
             }
 
-            // Just return the array values directly without pagination
+            $groupedResults = [];
+            foreach ($results as $item) {
+                // Check if $item is an array or object and access properties accordingly
+                $categoryCode = is_array($item) ? $item['category_code'] : $item->category_code;
+                
+                if (!isset($groupedResults[$categoryCode])) {
+                    $groupedResults[$categoryCode] = [
+                        'category_code' => $categoryCode,
+                        'category_description' => is_array($item) ? $item['category_description'] : $item->category_description,
+                        'product' => []
+                    ];
+                }
+                
+                $productData = [
+                    'product_code' => is_array($item) ? $item['product_code'] : $item->product_code,
+                    'description' => is_array($item) ? $item['product_description'] : $item->product_description,
+                    'quantity' => (int) (is_array($item) ? $item['quantity'] : $item->quantity),
+                    'net_sales' => (float) number_format(is_array($item) ? $item['net_sales'] : $item->net_sales, 2, '.', '')
+                ];
+
+                // Fetch combo items for this product
+                $comboItems = ItemDetail::select(
+                    'item_details.product_code',
+                    'products.product_description as description',
+                    DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
+                    DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
+                )
+                ->join('header', function ($join) {
+                    $join->on('item_details.si_number', '=', 'header.si_number')
+                         ->on('item_details.terminal_number', '=', 'header.terminal_number')
+                         ->on('item_details.branch_name', '=', 'header.branch_name');
+                })
+                ->leftJoin('products', 'item_details.product_code', '=', 'products.product_code')
+                ->where('item_details.combo_header', $item->product_code)
+                ->whereBetween('header.date', [$startDate, $endDate]);
+                
+                if ($store !== 'ALL') {
+                    $comboItems->where('item_details.store_name', $store);
+                }
+                
+                if ($branch !== 'ALL') {
+                    $comboItems->where('item_details.branch_name', $branch);
+                }
+                
+                $comboItems = $comboItems->groupBy('item_details.product_code', 'products.product_description')
+                                        ->get();
+                
+                if ($comboItems->isNotEmpty()) {
+                    $productData['combo_items'] = $comboItems->map(function($comboItem) {
+                        return [
+                            'product_code' => $comboItem->product_code,
+                            'description' => $comboItem->description,
+                            'total_quantity' => (int) $comboItem->total_quantity,
+                            'net_sales' => (float) number_format($comboItem->net_sales, 2, '.', '')
+                        ];
+                    })->toArray();
+                }
+                
+                $groupedResults[$categoryCode]['product'][] = $productData;
+            }
+
+            // Return all data for PDF/Excel export
             return response()->json([
-                'data' => array_values($data['groupedResults']),
+                'status' => 'success',
+                'data' => array_values($groupedResults),
                 'meta' => [
                     'from_date' => $startDate,
                     'to_date' => $endDate,
                     'branch' => $branch,
-                    'concept_id' => $store,
+                    'store_name' => $store,
                     'category' => $category
                 ]
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'An error occurred',
                 'error' => $e->getMessage(),
-                'debug' => config('app.debug') ? $e->getMessage() : null
+                'debug' => config('app.debug') ? $e->getTrace() : null
             ], 500);
         }
-    }
-    
-   
-    private function getProductMixCategoryData($startDate, $endDate, $branch, $category, $store)
-{
-    // Use the summary table for main data
-    $query = \App\Models\ItemDetailsDailySummary::select([ 
-        'categories.category_code',
-        'categories.category_description',
-        'item_details_daily_summary.product_code',
-        'products.product_description',
-        DB::raw('SUM(item_details_daily_summary.quantity) as quantity'),
-        DB::raw('SUM(item_details_daily_summary.net_sales) as net_sales')
-    ])
-    ->join('products', 'item_details_daily_summary.product_code', '=', 'products.product_code')
-    ->join('categories', 'products.category_code', '=', 'categories.category_code')
-    ->whereBetween('item_details_daily_summary.date', [$startDate, $endDate])
-    ->when($store !== 'ALL', function ($q) use ($store) {
-        return $q->where('item_details_daily_summary.store_name', $store);
-    })
-    ->when($branch !== 'ALL', function ($q) use ($branch) {
-        return $q->where('item_details_daily_summary.branch_name', $branch);
-    })
-    ->when($category !== 'ALL', function ($q) use ($category) {
-        return $q->where('products.category_code', $category);
-    })
-    // Note: We need to handle terminal filtering in the combo items section
-    ->groupBy([ 
-        'categories.category_code',
-        'categories.category_description',
-        'item_details_daily_summary.product_code',
-        'products.product_description'
-    ])
-    ->orderBy('quantity', 'desc'); // Sort by quantity descending
-
-    $results = $query->get();
-
-    if ($results->isEmpty()) {
-        // Check if we have any data in the date range
-        $hasData = DB::table('item_details_daily_summary')
-            ->whereBetween('date', [$startDate, $endDate])
-            ->exists();
-            
-        if (!$hasData) {
-            return ['groupedResults' => []];
-        }
-    }
-
-    // Group results by category for transformation
-    $groupedResults = [];
-    foreach ($results as $item) {
-        $categoryCode = $item->category_code;
-        
-        if (!isset($groupedResults[$categoryCode])) {
-            $groupedResults[$categoryCode] = [
-                'category_code' => $categoryCode,
-                'category_description' => $item->category_description,
-                'product' => []
-            ];
-        }
-        
-        $productData = [
-            'product_code' => $item->product_code,
-            'description' => $item->product_description,
-            'quantity' => (int) $item->quantity,
-            'net_sales' => (float) number_format($item->net_sales, 2, '.', '')
-        ];
-
-        // For combo items, we still need to query the original tables
-        // This is because combo item relationships aren't in the summary table
-        $comboItems = ItemDetail::select(
-            'item_details.product_code',
-            'products.product_description as description',
-            DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
-            DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
-        )
-        ->join('header', function ($join) {
-            $join->on('item_details.si_number', '=', 'header.si_number')
-                 ->on('item_details.terminal_number', '=', 'header.terminal_number')
-                 ->on('item_details.branch_name', '=', 'header.branch_name');
-        })
-        ->leftJoin('products', 'item_details.product_code', '=', 'products.product_code')
-        ->where('item_details.combo_header', $item->product_code)
-        ->whereBetween('header.date', [$startDate, $endDate]);
-        
-        if ($store !== 'ALL') {
-            $comboItems->where('item_details.store_name', $store);
-        }
-        
-        if ($branch !== 'ALL') {
-            $comboItems->where('item_details.branch_name', $branch);
-        }
-        
-        $comboItems = $comboItems->groupBy('item_details.product_code', 'products.product_description')
-                                ->get();
-        
-        if ($comboItems->isNotEmpty()) {
-            $productData['combo_items'] = $comboItems->map(function($comboItem) {
-                return [
-                    'product_code' => $comboItem->product_code,
-                    'description' => $comboItem->description,
-                    'total_quantity' => (int) $comboItem->total_quantity,
-                    'net_sales' => (float) number_format($comboItem->net_sales, 2, '.', '')
-                ];
-            })->toArray();
-        }
-        
-        $groupedResults[$categoryCode]['product'][] = $productData;
-    }
-    
-    return [
-        'groupedResults' => $groupedResults,
-        'results' => $results
-    ];
 }
     
 
