@@ -157,24 +157,23 @@ export default function DailySalesIndex() {
                 'Store': item.store_name,
                 'Terminal': item.terminal_no,
                 'Date': item.date,
-                'SI From': item.si_from,
-                'SI To': item.si_to,
-                'Z-Read Counter': item.z_read_counter,
-                'Old Grand Total': item.old_grand_total,
-                'New Grand Total': item.new_grand_total,
-                'Gross Sales': item.total_gross_sales,
-                'Net Sales': item.total_net_sales_after_void,
-                '# of Transactions': item.number_of_transactions,
-                '# of Guests': item.number_of_guests,
-                'Service Charge': item.total_service_charge,
-                'Void Amount': item.total_void_amount,
-                'PWD Discount': item.PWD_Discount,
-                'Senior Discount': item.Senior_Discount,
-                'National Athletes Discount': item.National_Athletes_Discount,
-                'Solo Parent Discount': item.Solo_Parent_Discount,
-                'Valor Discount': item.Valor_Discount,
-                'Other Discounts': item.Other_Discounts,
-                
+                'SI From': Number(item.si_from),
+                'SI To': Number(item.si_to),
+                'Z-Read Counter': Number(item.z_read_counter),
+                'Old Grand Total': Number(item.old_grand_total),
+                'New Grand Total': Number(item.new_grand_total),
+                'Gross Sales': Number(item.total_gross_sales),
+                'Net Sales': Number(item.total_net_sales_after_void),
+                '# of Transactions': Number(item.number_of_transactions),
+                '# of Guests': Number(item.number_of_guests),
+                'Service Charge': Number(item.total_service_charge),
+                'Void Amount': Number(item.total_void_amount),
+                'PWD Discount': Number(item.PWD_Discount),
+                'Senior Discount': Number(item.Senior_Discount),
+                'National Athletes Discount': Number(item.National_Athletes_Discount),
+                'Solo Parent Discount': Number(item.Solo_Parent_Discount),
+                'Valor Discount': Number(item.Valor_Discount),
+                'Other Discounts': Number(item.Other_Discounts),
             }));
             
             // Create Excel workbook
@@ -182,23 +181,24 @@ export default function DailySalesIndex() {
             
             // Add grand totals to the worksheet if available
             if (grandTotals) {
+                // Append a blank row then a numeric grand totals row (no formatted strings)
+                XLSX.utils.sheet_add_aoa(worksheet, [[""]], { origin: -1 });
                 const grandTotalRow = [
-                    'Grand Totals:', '', '', '', '', '', '', '', '', // Empty cells to align with columns
-                    formatAmount(Number(grandTotals.total_gross_sales)),
-                    formatAmount(Number(grandTotals.total_net_sales_after_void)),
-                    grandTotals.number_of_transactions,
-                    grandTotals.number_of_guests,
-                    grandTotals.total_service_charge,
-                    grandTotals.total_void_amount,
-                    grandTotals.PWD_Discount,
-                    grandTotals.Senior_Discount,
-                    grandTotals.National_Athletes_Discount,
-                    grandTotals.Solo_Parent_Discount,
-                    grandTotals.Valor_Discount,
-                    grandTotals.Other_Discounts,
-               
+                    'Grand Totals:', '', '', '', '', '', '', '', '',
+                    Number(grandTotals.total_gross_sales),
+                    Number(grandTotals.total_net_sales_after_void),
+                    Number(grandTotals.number_of_transactions),
+                    Number(grandTotals.number_of_guests),
+                    Number(grandTotals.total_service_charge),
+                    Number(grandTotals.total_void_amount),
+                    Number(grandTotals.PWD_Discount),
+                    Number(grandTotals.Senior_Discount),
+                    Number(grandTotals.National_Athletes_Discount),
+                    Number(grandTotals.Solo_Parent_Discount),
+                    Number(grandTotals.Valor_Discount),
+                    Number(grandTotals.Other_Discounts),
                 ];
-                XLSX.utils.sheet_add_aoa(worksheet, [grandTotalRow], { origin: -1 }); // Append at the end
+                XLSX.utils.sheet_add_aoa(worksheet, [grandTotalRow], { origin: -1 });
             }
 
             const workbook = XLSX.utils.book_new();

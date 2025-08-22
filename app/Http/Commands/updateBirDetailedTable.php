@@ -14,7 +14,7 @@ class UpdateBirDetailedTable extends Command
      *
      * @var string
      */
-    protected $signature = 'bir-detailed:update {date? : Date to update in Y-m-d format} {--all : Update all dates} {--previous : Update previous date} {--start= : Start date for range update (YYYY-MM-DD format)} {--end= : End date for range update (YYYY-MM-DD format)}';
+    protected $signature = 'bir-detailed:update {date? : Date to update in Y-m-d format} {--all : Update all dates} {--previous : Update previous date} {--start= : Start date for range update (YYYY-MM-DD format)} {--end= : End date for range update (YYYY-MM-DD format)} {--branch= : Branch name to limit processing}';
 
     /**
      * The console command description.
@@ -59,18 +59,19 @@ class UpdateBirDetailedTable extends Command
     protected function updateSingleDate($date)
     {
         $this->info("Processing BIR Detailed data for date: {$date}");
+        $branchFilter = $this->option('branch');
         
         try {
             // Start a transaction for data integrity
             DB::beginTransaction();
             
             // Delete existing records for this date
-            DB::table('bir_detailed')
-                ->where('date', $date)
-                ->delete();
+            $delete = DB::table('bir_detailed')->where('date', $date);
+            if ($branchFilter) { $delete->where('branch_name', $branchFilter); }
+            $delete->delete();
             
             // Insert new records from the source tables
-            $affected = DB::insert("
+            $query = "
                 INSERT INTO bir_detailed (
                     date, branch_name, store_name, terminal_number, si_number, 
                     vat_exempt_sales, zero_rated_sales, vat_amount, less_vat, gross_amount,
@@ -133,8 +134,10 @@ class UpdateBirDetailedTable extends Command
                    AND h.terminal_number = pts.terminal_number 
                    AND h.branch_name = pts.branch_name 
                    AND h.store_name = pts.store_name
-                WHERE h.void_flag = 0 AND h.date = ?
-            ", [$date]);
+                WHERE h.void_flag = 0 AND h.date = ?";
+            $params = [$date];
+            if ($branchFilter) { $query .= " AND h.branch_name = ?"; $params[] = $branchFilter; }
+            $affected = DB::insert($query, $params);
             
             // Commit the transaction
             DB::commit();
@@ -160,6 +163,7 @@ class UpdateBirDetailedTable extends Command
     {
         $startDate = $this->option('start');
         $endDate = $this->option('end');
+        $branchFilter = $this->option('branch');
         
         // Validate date range inputs
         if (!$startDate && !$endDate) {
@@ -227,12 +231,12 @@ class UpdateBirDetailedTable extends Command
                 DB::beginTransaction();
                 
                 // Delete existing records for this date
-                DB::table('bir_detailed')
-                    ->where('date', $date)
-                    ->delete();
+                $delete = DB::table('bir_detailed')->where('date', $date);
+                if ($branchFilter) { $delete->where('branch_name', $branchFilter); }
+                $delete->delete();
                 
                 // Insert new records from the source tables (using the same query as updateSingleDate)
-                DB::insert("
+                $query = "
                     INSERT INTO bir_detailed (
                         date, branch_name, store_name, terminal_number, si_number, 
                         vat_exempt_sales, zero_rated_sales, vat_amount, less_vat, gross_amount,
@@ -295,8 +299,10 @@ class UpdateBirDetailedTable extends Command
                        AND h.terminal_number = pts.terminal_number 
                        AND h.branch_name = pts.branch_name 
                        AND h.store_name = pts.store_name
-                    WHERE h.void_flag = 0 AND h.date = ?
-                ", [$date]);
+                    WHERE h.void_flag = 0 AND h.date = ?";
+                $params = [$date];
+                if ($branchFilter) { $query .= " AND h.branch_name = ?"; $params[] = $branchFilter; }
+                DB::insert($query, $params);
                 
                 // Commit the transaction
                 DB::commit();
@@ -332,10 +338,18 @@ class UpdateBirDetailedTable extends Command
     protected function updateAllDates()
     {
         $this->info("Updating BIR Detailed data for all dates");
+        $branchFilter = $this->option('branch');
         
-        if (!$this->confirm('This will delete and regenerate all BIR Detailed summary data. Continue?', true)) {
-            $this->info('Operation cancelled.');
-            return 0;
+        if ($branchFilter) {
+            if (!$this->confirm("This will delete and regenerate BIR Detailed summary data for branch '{$branchFilter}'. Continue?", true)) {
+                $this->info('Operation cancelled.');
+                return 0;
+            }
+        } else {
+            if (!$this->confirm('This will delete and regenerate all BIR Detailed summary data. Continue?', true)) {
+                $this->info('Operation cancelled.');
+                return 0;
+            }
         }
         
         try {
@@ -347,8 +361,12 @@ class UpdateBirDetailedTable extends Command
                 ->pluck('date')
                 ->toArray();
             
-            // Delete all existing records
-            DB::table('bir_detailed')->truncate();
+            // Delete existing records (respect branch when provided)
+            if ($branchFilter) {
+                DB::table('bir_detailed')->where('branch_name', $branchFilter)->delete();
+            } else {
+                DB::table('bir_detailed')->truncate();
+            }
             
             // Show progress bar
             $bar = $this->output->createProgressBar(count($dates));
@@ -359,6 +377,7 @@ class UpdateBirDetailedTable extends Command
             
             foreach ($dates as $date) {
                 try {
+                    // Per-date insert will honor branch filter via option
                     $this->updateSingleDate($date);
                     $successCount++;
                 } catch (Exception $e) {

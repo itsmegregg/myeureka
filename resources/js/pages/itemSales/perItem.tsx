@@ -252,46 +252,54 @@ export default function PerItem() {
             
             const { data, meta } = await fetchAllData();
             
-            // Format data for Excel
-            const excelData = [];
-            
-            // Add header row
-            excelData.push(['Product Code', 'Product Description', 'Total Quantity', 'Total Net Sales']);
-            
-            // Add products and their combo items
+            // Build metadata rows first
+            const metaRows: any[] = [
+                ['Item Sales - Per Item Report'],
+                [`Date Range: ${format(new Date(meta.from_date), 'MMM dd, yyyy')} to ${format(new Date(meta.to_date), 'MMM dd, yyyy')}`],
+            ];
+            if (selectedBranch) metaRows.push([`Branch: ${selectedBranch.branch_name || 'All Branches'}`]);
+            if (selectedStore) metaRows.push([`Store: ${selectedStore || 'All Stores'}`]);
+            if (selectedProduct) metaRows.push([`Product: ${selectedProduct || 'All Products'}`]);
+            if (selectedTerminal) metaRows.push([`Terminal: ${selectedTerminal || 'All Terminals'}`]);
+
+            // Initialize worksheet with metadata
+            const ws = XLSX.utils.aoa_to_sheet(metaRows);
+            // Blank row between metadata and table
+            XLSX.utils.sheet_add_aoa(ws, [[""]], { origin: -1 });
+
+            // Prepare table header and body, keeping numeric values as numbers
+            const headerRow = ['Product Code', 'Product Description', 'Total Quantity', 'Total Net Sales'];
+            const bodyRows: any[] = [];
             data.forEach((product: any) => {
-                excelData.push([
+                bodyRows.push([
                     product.product_code,
                     product.product_description,
-                    product.total_quantity,
-                    Number(product.total_net_sales).toFixed(2)
+                    Number(product.total_quantity),
+                    Number(product.total_net_sales),
                 ]);
-                
-                // Add combo items if any
                 if (product.combo_items && product.combo_items.length > 0) {
                     product.combo_items.forEach((combo: any) => {
-                        excelData.push([
+                        bodyRows.push([
                             `  - ${combo.product_code}`,
                             `  ${combo.product_description}`,
-                            combo.total_quantity,
-                            Number(combo.net_sales).toFixed(2)
+                            Number(combo.total_quantity),
+                            Number(combo.net_sales),
                         ]);
                     });
                 }
             });
+
+            // Append table to worksheet (below metadata)
+            XLSX.utils.sheet_add_aoa(ws, [headerRow, ...bodyRows], { origin: -1 });
             
-            // Create a worksheet
-            const ws = XLSX.utils.aoa_to_sheet(excelData);
-            
-            // Add metadata at the top
-            XLSX.utils.sheet_add_aoa(ws, [
-                ['Item Sales - Per Item Report'],
-                [`Date Range: ${format(new Date(meta.from_date), 'MMM dd, yyyy')} to ${format(new Date(meta.to_date), 'MMM dd, yyyy')}`],
-                selectedBranch ? [`Branch: ${selectedBranch.branch_name || 'All Branches'}`] : [],
-                selectedStore ? [`Store: ${selectedStore || 'All Stores'}`] : [],
-                selectedProduct ? [`Product: ${selectedProduct || 'All Products'}`] : [],
-                [''],  // Empty row before data
-            ], { origin: 'A1' });
+            // Optional: set column widths for readability
+            // @ts-ignore
+            ws['!cols'] = [
+                { wch: 18 }, // Product Code
+                { wch: 40 }, // Product Description
+                { wch: 16 }, // Total Quantity
+                { wch: 18 }, // Total Net Sales
+            ];
             
             // Create workbook and add the worksheet
             const wb = XLSX.utils.book_new();
