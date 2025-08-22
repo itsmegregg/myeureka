@@ -63,8 +63,8 @@ export default function ProductSelect() {
         // Find the product in our fetched products array
         const product = products.find((p) => p.product_code === selectedProduct);
         
-        // If we can't find it, return a sensible default
-        return product ? product.product_name : 'Select product';
+        // Prefer product_name, fallback to product_description
+        return product ? (product.product_name || product.product_description) : 'Select product';
     };
     
     return (
@@ -114,13 +114,15 @@ export default function ProductSelect() {
                 {products.map((product) => (
                   <CommandItem
                     key={product.product_code}
-                    value={product.product_code}
-                    onSelect={(currentValue) => {
-                      setSelectedProduct(currentValue);
+                    // Make the value searchable by code + name + description
+                    value={`${product.product_code} ${product.product_name ?? ''} ${product.product_description ?? ''}`.trim()}
+                    onSelect={() => {
+                      // Persist only the product_code in state
+                      setSelectedProduct(product.product_code);
                       setOpen(false);
                     }}
                   >
-                    {product.product_name}
+                    {product.product_name || product.product_description}
                     {selectedProduct === product.product_code && (
                       <Check size={16} strokeWidth={2} className="ml-auto" />
                     )}
