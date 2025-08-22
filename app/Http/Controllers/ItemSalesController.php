@@ -48,7 +48,9 @@ class ItemSalesController extends Controller
         ->leftJoin('products', function($join) {
             $join->on('item_details.product_code', '=', 'products.product_code');
         })
-        ->whereBetween('header.date', [$startDate, $endDate]);
+        ->whereBetween('header.date', [$startDate, $endDate])
+        ->where("item_details.void_flag", 0);
+
 
         if ($store !== 'ALL') {
             $productMix->where('item_details.store_name', $store);
@@ -104,7 +106,8 @@ class ItemSalesController extends Controller
                 $join->on('item_details.product_code', '=', 'products.product_code');
             })
             ->where('item_details.combo_header', $item->product_code)
-            ->whereBetween('header.date', [$startDate, $endDate]);
+            ->whereBetween('header.date', [$startDate, $endDate])
+            ->where("item_details.void_flag", 0);
             
             if ($store !== 'ALL') {
                 $comboItems->where('item_details.store_name', $store);
@@ -171,6 +174,7 @@ class ItemSalesController extends Controller
             ->join('products', 'item_details.product_code', '=', 'products.product_code')
             ->join('categories', 'products.category_code', '=', 'categories.category_code')
             ->whereBetween('header.date', [$startDate, $endDate])
+            ->where("item_details.void_flag", 0)
             ->when($store !== 'ALL', function ($q) use ($store) {
                 return $q->where('item_details.store_name', $store);
             })
@@ -242,7 +246,8 @@ class ItemSalesController extends Controller
                 })
                 ->leftJoin('products', 'item_details.product_code', '=', 'products.product_code')
                 ->where('item_details.combo_header', $item->product_code)
-                ->whereBetween('header.date', [$startDate, $endDate]);
+                ->whereBetween('header.date', [$startDate, $endDate])
+                ->where("item_details.void_flag", 0);
                 
                 if ($store !== 'ALL') {
                     $comboItems->where('item_details.store_name', $store);
@@ -319,6 +324,7 @@ class ItemSalesController extends Controller
             ->join('products', 'item_details.product_code', '=', 'products.product_code')
             ->join('categories', 'products.category_code', '=', 'categories.category_code')
             ->whereBetween('header.date', [$startDate, $endDate])
+            ->where("item_details.void_flag", 0)
             ->when($store !== 'ALL', function ($q) use ($store) {
                 return $q->where('item_details.store_name', $store);
             })
@@ -390,7 +396,8 @@ class ItemSalesController extends Controller
                 })
                 ->leftJoin('products', 'item_details.product_code', '=', 'products.product_code')
                 ->where('item_details.combo_header', $item->product_code)
-                ->whereBetween('header.date', [$startDate, $endDate]);
+                ->whereBetween('header.date', [$startDate, $endDate])
+                ->where('item_details.void_flag', 0);
                 
                 if ($store !== 'ALL') {
                     $comboItems->where('item_details.store_name', $store);
@@ -470,7 +477,8 @@ class ItemSalesController extends Controller
                     $join->on('item_details.si_number', '=', 'header.si_number')
                          ->on('item_details.terminal_number', '=', 'header.terminal_number')
                          ->on('item_details.branch_code', '=', 'header.branch_code');
-                });
+                })
+                ->where('item_details.void_flag', 0);
 
             // Filter by date range - Using from_date and to_date to match frontend
             if ($request->has('from_date') && $request->has('to_date')) {
@@ -541,7 +549,8 @@ class ItemSalesController extends Controller
         ->leftJoin('products', function($join) {
             $join->on('item_details.product_code', '=', 'products.product_code');
         })
-        ->whereBetween('header.date', [$startDate, $endDate]);
+        ->whereBetween('header.date', [$startDate, $endDate])
+        ->where("item_details.void_flag", 0);
 
         if ($store !== 'ALL') {
             $productMix->where('item_details.store_name', $store);
@@ -599,7 +608,8 @@ class ItemSalesController extends Controller
                 $join->on('item_details.product_code', '=', 'products.product_code');
             })
             ->where('item_details.combo_header', $item->product_code)
-            ->whereBetween('header.date', [$startDate, $endDate]);
+            ->whereBetween('header.date', [$startDate, $endDate])
+            ->where("item_details.void_flag", 0);
             
             if ($store !== 'ALL') {
                 $comboItems->where('item_details.store_name', $store);
