@@ -130,7 +130,7 @@ class DashboardController extends Controller
             }
             
             $txData = $averageTxQuery->first();
-            $totalTransactions = $txData->total_transactions - 1 ?? 0;
+            $totalTransactions = $txData->total_transactions ?? 0;
             $totalDays = $txData->total_days ?? 0;
             $averageTxPerDay = $totalDays > 0 ? round($totalTransactions / $totalDays, 2) : 0;
             
