@@ -93,28 +93,27 @@ class DashboardController extends Controller
             $totalSales = $totals->total_amount ?? 0;
             $averageSalesPerCustomer = $totalGuests != 0 ? round($totalSales / $totalGuests, 2) : 0;
             
-            // Calculate Average Sales Per Day
-            $averageSalesQuery = Header::query()
-                ->join('item_details', function ($join) {
-                    $join->on('header.si_number', '=', 'item_details.si_number')
-                         ->on('header.branch_name', '=', 'item_details.branch_name');
+            // Calculate total days for average sales calculation
+            $daysQuery = DB::table('header')
+                ->selectRaw('COUNT(DISTINCT date) as total_days')
+                ->whereBetween('date', [$startDate, $endDate])
+                ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
+                    $query->where('branch_name', $branch_name);
                 })
-                ->whereBetween('header.date', [$startDate, $endDate]);
-
-            // Only apply filters if not 'ALL'
-            if ($branch_name !== 'ALL' && $branch_name !== null) {
-                $averageSalesQuery->where('header.branch_name', $branch_name);
-            }
-
-            if ($concept_name !== 'ALL' && $concept_name !== null) {
-                $averageSalesQuery->where('header.store_name', $concept_name);
-            }
-
-            $averageSales = $averageSalesQuery->selectRaw(' 
-                SUM(CAST(item_details.net_total AS NUMERIC)) as total_sales,
-                COUNT(DISTINCT header.date) as total_days,
-                (CAST(SUM(CAST(item_details.net_total AS NUMERIC)) AS NUMERIC) / COUNT(DISTINCT header.date)) AS average_sales
-            ')->first();
+                ->when($concept_name !== 'ALL' && $concept_name !== null, function ($query) use ($concept_name) {
+                    $query->where('store_name', $concept_name);
+                })
+                ->whereNull('void_reason')
+                ->first();
+            
+            $totalDaysForSales = $daysQuery->total_days ?? 0;
+            $averageSalesPerDay = $totalDaysForSales > 0 ? round($totalSales / $totalDaysForSales, 2) : 0;
+            
+            $averageSales = (object)[
+                'total_sales' => $totalSales,
+                'total_days' => $totalDaysForSales,
+                'average_sales' => $averageSalesPerDay
+            ];
             
             // Calculate Average Transactions Per Day
             $averageTxQuery = Header::query()
@@ -200,7 +199,7 @@ class DashboardController extends Controller
                     'daily_guest_counts' => $dailyGuestCounts,
                     'average_sales_per_day' => [
                         'average_sales' => $averageSales ? round($averageSales->average_sales, 2) : 0,
-                       'total_sales' => round($totalSales, 2),
+                        'total_sales' => $averageSales ? round($averageSales->total_sales, 2) : 0,
                         'total_days' => $averageSales ? $averageSales->total_days : 0
                     ],
                     'average_tx_per_day' => [
