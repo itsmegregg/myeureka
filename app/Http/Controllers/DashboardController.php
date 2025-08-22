@@ -116,35 +116,23 @@ class DashboardController extends Controller
                 (CAST(SUM(CAST(item_details.net_total AS NUMERIC)) AS NUMERIC) / COUNT(DISTINCT header.date)) AS average_sales
             ')->first();
             
-            // Calculate Average Transactions Per Day using PostgreSQL's GROUPING SETS
-            $txData = DB::select(
-                DB::raw("WITH transaction_data AS (
-                    SELECT 
-                        COUNT(*) - 1 as total_transactions,
-                        COUNT(DISTINCT date) as total_days
-                    FROM header
-                    WHERE date BETWEEN ? AND ?
-                    " . ($branch_name !== 'ALL' && $branch_name !== null ? "AND branch_name = ?" : "") . "
-                    " . ($concept_name !== 'ALL' && $concept_name !== null ? "AND store_name = ?" : "") . "
-                    AND void_reason IS NULL
-                )
-                SELECT 
-                    total_transactions,
-                    total_days,
-                    CASE WHEN total_days > 0 THEN ROUND(CAST(total_transactions AS numeric) / total_days, 2) ELSE 0 END as average_tx_per_day
-                FROM transaction_data"),
-                array_filter([
-                    $startDate,
-                    $endDate,
-                    $branch_name !== 'ALL' && $branch_name !== null ? $branch_name : null,
-                    $concept_name !== 'ALL' && $concept_name !== null ? $concept_name : null
-                ], function($value) { return $value !== null; })
-            );
+            // Calculate Average Transactions Per Day
+            $averageTxQuery = Header::query()
+                ->selectRaw('COUNT(*) as total_transactions, COUNT(DISTINCT date) as total_days')
+                ->whereBetween('date', [$startDate, $endDate]);
+                
+            if ($branch_name !== 'ALL' && $branch_name !== null) {
+                $averageTxQuery->where('branch_name', $branch_name);
+            }
             
-            $txResult = count($txData) > 0 ? $txData[0] : null;
-            $totalTransactions = $txResult ? $txResult->total_transactions : 0;
-            $totalDays = $txResult ? $txResult->total_days : 0;
-            $averageTxPerDay = $txResult ? $txResult->average_tx_per_day : 0;
+            if ($concept_name !== 'ALL' && $concept_name !== null) {
+                $averageTxQuery->where('store_name', $concept_name);
+            }
+            
+            $txData = $averageTxQuery->first();
+            $totalTransactions = $txData->total_transactions - 1 ?? 0;
+            $totalDays = $txData->total_days ?? 0;
+            $averageTxPerDay = $totalDays > 0 ? round($totalTransactions / $totalDays, 2) : 0;
             
             // Format the month string
             $formattedMonth = \Carbon\Carbon::createFromFormat('Y-m', $month)->format('F Y');
