@@ -375,7 +375,7 @@ class UpdateDsrTable extends Command
                         SUM(CAST(id.void_amount AS NUMERIC(15, 2))) AS total_void_amount,
                         SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS PWD_Discount,
                         SUM(CASE WHEN id.discount_code = 'SENIOR' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Senior_Discount,
-                        SUM(CASE WHEN UPPER(id.discount_code) IN ('NATIONAL ATHLETES', 'ATHLETES', 'COACH') THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS National_Athletes_Discount,
+                        SUM(CASE WHEN UPPER(id.discount_code) IN ('NATIONAL ATHLETES', 'ATHLETES', 'COACH', 'ATHELES/COACH') THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS National_Athletes_Discount,
                         SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Solo_Parent_Discount,
                         SUM(CASE WHEN id.discount_code = 'VALOR' THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Valor_Discount,
                         SUM(CASE WHEN UPPER(id.discount_code) NOT IN ('DISABILITY', 'SENIOR', 'NATIONAL ATHLETES', 'ATHLETES', 'COACH', 'ATHELES/COACH', 'SOLO PARENT', 'VALOR', 'EMPLOYEE DISCOUNT') THEN CAST(id.discount_amount AS NUMERIC(15, 2)) ELSE 0 END) AS Other_Discounts
