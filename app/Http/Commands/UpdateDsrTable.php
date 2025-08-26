@@ -138,7 +138,7 @@ class UpdateDsrTable extends Command
                         SUM(id.void_amount) AS total_void_amount,
                         SUM(CASE WHEN id.discount_code = 'DISABILITY' THEN id.discount_amount ELSE 0 END) AS PWD_Discount,
                         SUM(CASE WHEN id.discount_code = 'SENIOR' THEN id.discount_amount ELSE 0 END) AS Senior_Discount,
-                        SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES' THEN id.discount_amount ELSE 0 END) AS National_Athletes_Discount,
+                        SUM(CASE WHEN id.discount_code = 'NATIONAL ATHLETES, ATHLETES, COACH, ATHELETS/COACH' THEN id.discount_amount ELSE 0 END) AS National_Athletes_Discount,
                         SUM(CASE WHEN id.discount_code = 'SOLO PARENT' THEN id.discount_amount ELSE 0 END) AS Solo_Parent_Discount,
                         SUM(CASE WHEN id.discount_code = 'VALOR' THEN id.discount_amount ELSE 0 END) AS Valor_Discount,
                         SUM(CASE
