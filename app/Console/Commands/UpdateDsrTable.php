@@ -258,7 +258,25 @@ class UpdateDsrTable extends Command
                 WHERE h.date = ?
                 GROUP BY h.date, h.branch_name, h.store_name, h.terminal_number, ds.si_from, ds.si_to, ds.old_grand_total, ds.new_grand_total, ds.z_read_counter
             
-                ", [$date]);
+            ON CONFLICT (date, branch_name, store_name, terminal_no) 
+            DO UPDATE SET
+                si_from = EXCLUDED.si_from,
+                si_to = EXCLUDED.si_to,
+                old_grand_total = EXCLUDED.old_grand_total,
+                new_grand_total = EXCLUDED.new_grand_total,
+                number_of_transactions = EXCLUDED.number_of_transactions,
+                number_of_guests = EXCLUDED.number_of_guests,
+                total_service_charge = EXCLUDED.total_service_charge,
+                total_gross_sales = EXCLUDED.total_gross_sales,
+                total_net_sales_after_void = EXCLUDED.total_net_sales_after_void,
+                total_void_amount = EXCLUDED.total_void_amount,
+                PWD_Discount = EXCLUDED.PWD_Discount,
+                Senior_Discount = EXCLUDED.Senior_Discount,
+                National_Athletes_Discount = EXCLUDED.National_Athletes_Discount,
+                Solo_Parent_Discount = EXCLUDED.Solo_Parent_Discount,
+                Valor_Discount = EXCLUDED.Valor_Discount,
+                Other_Discounts = EXCLUDED.Other_Discounts,
+                z_read_counter = EXCLUDED.z_read_counter", [$date]);
                 
                 DB::commit();
                 $successCount++;
