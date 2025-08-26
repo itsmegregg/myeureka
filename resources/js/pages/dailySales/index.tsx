@@ -253,7 +253,7 @@ export default function DailySalesIndex() {
             const headers = [
                 'Branch', 'Store', 'Terminal', 'Date', 'SI From', 'SI To', 'Z-Read Counter',
                 'Old Grand Total', 'New Grand Total', 'Gross Sales', 'Net Sales', 'No. of Transactions',
-                'Void Amount', 'Guests', 'PWD Discount', 'Senior Discount', 'National Athletes Discount',
+                'Void Amount', 'Guests','Service Charge', 'PWD Discount', 'Senior Discount', 'National Athletes Discount',
                 'Solo Parent Discount', 'Valor Discount', 'Other Discounts'
             ];
             
@@ -340,6 +340,7 @@ export default function DailySalesIndex() {
                 item.number_of_transactions,
                 formatAmount(item.total_void_amount),
                 item.number_of_guests,
+                formatAmount(item.total_service_charge),
                 formatAmount(item.PWD_Discount),
                 formatAmount(item.Senior_Discount),
                 formatAmount(item.National_Athletes_Discount),
@@ -413,7 +414,7 @@ export default function DailySalesIndex() {
             if (grandTotals) {
                 const grandTotalHeaders = [
                     'Grand Totals:', '', '', '', '', '', '', '', '', // Empty cells for alignment
-                    'Gross Sales', 'Net Sales', 'Transactions', 'Void Amount', 'Guests', 'PWD', 'Senior', 'National Athletes', 'Solo Parent', 'Valor', 'Other'
+                    'Gross Sales', 'Net Sales', 'Transactions', 'Void Amount', 'Guests','Service Charge', 'PWD', 'Senior', 'National Athletes', 'Solo Parent', 'Valor', 'Other'
                 ];
                 const grandTotalValues = [
                     '', '', '', '', '', '', '', '', '', // Empty cells for alignment
@@ -422,10 +423,11 @@ export default function DailySalesIndex() {
                     grandTotals.number_of_transactions,
                     formatAmount(grandTotals.total_void_amount),
                     grandTotals.number_of_guests,
+                    formatAmount(grandTotals.total_service_charge),
                     formatAmount(grandTotals.PWD_Discount),
                     formatAmount(grandTotals.Senior_Discount),
                     formatAmount(grandTotals.National_Athletes_Discount),
-                    formatAmount(grandTotals.Solo_Parent_Discount),
+                    formatAmount(grandTotals.Solo_Parent_Discount), 
                     formatAmount(grandTotals.Valor_Discount),
                     formatAmount(grandTotals.Other_Discounts)
                 ];
@@ -536,6 +538,7 @@ export default function DailySalesIndex() {
                                                 <TableHead className="min-w-[150px] whitespace-nowrap">No. of Transactions</TableHead>
                                                 <TableHead className="min-w-[120px] whitespace-nowrap">Void Amount</TableHead>
                                                 <TableHead className="min-w-[100px] whitespace-nowrap">Guests</TableHead>
+                                                <TableHead className="min-w-[120px] whitespace-nowrap">Service Charge</TableHead>
                                                 <TableHead className="min-w-[120px] whitespace-nowrap">PWD Discount</TableHead>
                                                 <TableHead className="min-w-[150px] whitespace-nowrap">Senior Discount</TableHead>
                                                 <TableHead className="min-w-[200px] whitespace-nowrap">National Athletes Discount</TableHead>
@@ -577,6 +580,7 @@ export default function DailySalesIndex() {
                                                         <TableCell className="whitespace-nowrap text-center">{item.number_of_transactions}</TableCell>
                                                         <TableCell className="whitespace-nowrap text-center">{formatAmount(item.total_void_amount)}</TableCell>
                                                         <TableCell className="whitespace-nowrap text-center">{item.number_of_guests}</TableCell>
+                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.total_service_charge)}</TableCell>
                                                         <TableCell className="whitespace-nowrap text-center">{formatAmount(item.PWD_Discount)}</TableCell>
                                                         <TableCell className="whitespace-nowrap text-center">{formatAmount(item.Senior_Discount)}</TableCell>
                                                         <TableCell className="whitespace-nowrap text-center">{formatAmount(item.National_Athletes_Discount)}</TableCell>
@@ -596,6 +600,7 @@ export default function DailySalesIndex() {
                                          <TableCell className="text-center">{grandTotals.number_of_transactions}</TableCell>
                                          <TableCell className="text-center">{formatAmount(grandTotals.total_void_amount)}</TableCell>
                                          <TableCell className="text-center">{grandTotals.number_of_guests}</TableCell>
+                                         <TableCell className="text-center">{formatAmount(grandTotals.total_service_charge)}</TableCell>
                                          <TableCell className="text-center">{formatAmount(grandTotals.PWD_Discount)}</TableCell>
                                          <TableCell className="text-center">{formatAmount(grandTotals.Senior_Discount)}</TableCell>
                                          <TableCell className="text-center">{formatAmount(grandTotals.National_Athletes_Discount)}</TableCell>
