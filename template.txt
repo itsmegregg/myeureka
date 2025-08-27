@@ -1,0 +1,44 @@
+import BranchSelect from "@/components/public-components/branch-select";
+import DateRangePickernew from "@/components/public-components/date-range-picker";
+import TextHeader from "@/components/reusable-components/text-header";
+import { Button } from "@/components/ui/button";
+import AppLayout from "@/layouts/app-layout";
+import { Head } from "@inertiajs/react";
+import { Search } from "lucide-react";
+
+
+export default function DiscountIndex() {
+    return (
+        <AppLayout>
+            <Head title="Discount" />
+            <div className="flex flex-col">
+                <div className="@container/main flex flex-1 flex-col gap-2">
+                    <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+                        <div className="px-4 lg:px-6">
+                            <div className="flex flex-col gap-4 max-w-full overflow-hidden">
+                                <TextHeader title="Discount" />
+                                    <div className="flex flex-col md:flex-col lg:flex-row md:justify-between lg:justify-between gap-4">
+                                    <div className="flex flex-wrap items-end gap-2">
+                                        <BranchSelect/>
+                                        <DateRangePickernew/>
+                                        <Button>
+                                            <Search className="mr-2 h-4 w-4" />
+                                            Search
+                                        </Button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                    {/* export buttons */}
+                                    </div>
+                                    </div>
+                                    <div className="rounded-md overflow-hidden">
+                                        {/* table datas */}
+                                    </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </AppLayout>
+    );
+}
