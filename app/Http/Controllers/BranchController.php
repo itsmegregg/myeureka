@@ -13,7 +13,7 @@ class BranchController extends Controller
      */
     public function index()
     {
-        return Branch::orderBy('name', 'asc')->get();
+        return Branch::orderBy('branch_name', 'asc')->get();
     }
 
     /**
