@@ -74,7 +74,8 @@ class UpdateBirDetailedTable extends Command
                 INSERT INTO bir_detailed (
                     date, branch_name, store_name, terminal_number, si_number, 
                     vat_exempt_sales, zero_rated_sales, vat_amount, less_vat, gross_amount,
-                    discount_code, discount_amount, net_total, payment_type, amount
+                    discount_code, discount_amount, net_total, payment_type, amount,
+                    service_charge, delivery_charge
                 )
                 SELECT
                     h.date,
@@ -91,7 +92,9 @@ class UpdateBirDetailedTable extends Command
                     COALESCE(tis.total_item_discount_amount, 0),
                     COALESCE(tis.total_item_net_sales, 0),
                     pts.combined_payment_types,
-                    CAST(h.net_amount AS NUMERIC(10, 2))
+                    CAST(h.net_amount AS NUMERIC(10, 2)),
+                    CAST(COALESCE(h.service_charge, 0) AS NUMERIC(10, 2)),
+                    CAST(COALESCE(h.delivery_charge, 0) AS NUMERIC(10, 2))
                 FROM header as h
                 LEFT JOIN (
                     SELECT
@@ -236,7 +239,8 @@ class UpdateBirDetailedTable extends Command
                     INSERT INTO bir_detailed (
                         date, branch_name, store_name, terminal_number, si_number, 
                         vat_exempt_sales, zero_rated_sales, vat_amount, less_vat, gross_amount,
-                        discount_code, discount_amount, net_total, payment_type, amount
+                        discount_code, discount_amount, net_total, payment_type, amount,
+                        service_charge, delivery_charge
                     )
                     SELECT
                         h.date,
@@ -253,7 +257,9 @@ class UpdateBirDetailedTable extends Command
                         COALESCE(tis.total_item_discount_amount, 0),
                         COALESCE(tis.total_item_net_sales, 0),
                         pts.combined_payment_types,
-                        CAST(h.net_amount AS NUMERIC(10, 2))
+                        CAST(h.net_amount AS NUMERIC(10, 2)),
+                        CAST(COALESCE(h.service_charge, 0) AS NUMERIC(10, 2)),
+                        CAST(COALESCE(h.delivery_charge, 0) AS NUMERIC(10, 2))
                     FROM header as h
                     LEFT JOIN (
                         SELECT

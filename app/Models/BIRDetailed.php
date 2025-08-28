@@ -26,6 +26,9 @@ class BIRDetailed extends Model
         'discount_amount',
         'net_total',
         'payment_type',
+        'service_charge',
+        'takeout_charge',
+        'delivery_charge',
         'amount',
     ];
 
@@ -38,6 +41,9 @@ class BIRDetailed extends Model
         'gross_amount' => 'decimal:2',
         'discount_amount' => 'decimal:5',
         'net_total' => 'decimal:5',
+        'service_charge' => 'decimal:5',
+        'takeout_charge' => 'decimal:5',
+        'delivery_charge' => 'decimal:5',
         'amount' => 'decimal:2',
     ];
 
