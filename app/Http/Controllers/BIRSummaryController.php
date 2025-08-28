@@ -84,6 +84,7 @@ class BIRSummaryController extends Controller
                 DB::raw('ds.new_grand_total AS "Ending"'),
                 DB::raw('CAST(SUM(CAST(h.net_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "Net Amount"'),
                 DB::raw('CAST(SUM(CAST(h.service_charge AS NUMERIC)) AS NUMERIC(10, 2)) AS "Service charge"'),
+                DB::raw('CAST(SUM(CAST(h.delivery_charge AS NUMERIC)) AS NUMERIC(10, 2)) AS "Delivery Charge"'),
                 DB::raw('CAST(SUM(CAST(h.guest_count AS NUMERIC)) AS NUMERIC(10, 2)) AS "Total No of Guest"'),
             ];
 
@@ -208,6 +209,7 @@ class BIRSummaryController extends Controller
                 DB::raw('ds.new_grand_total AS "Ending"'),
                 DB::raw('CAST(SUM(CAST(h.net_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "Net Amount"'),
                 DB::raw('CAST(SUM(CAST(h.service_charge AS NUMERIC)) AS NUMERIC(10, 2)) AS "Service charge"'),
+                DB::raw('CAST(SUM(CAST(h.delivery_charge AS NUMERIC)) AS NUMERIC(10, 2)) AS "Delivery Charge"'),
                 DB::raw('CAST(SUM(CAST(h.guest_count AS NUMERIC)) AS NUMERIC(10, 2)) AS "Total No of Guest"'),
             ];
 
