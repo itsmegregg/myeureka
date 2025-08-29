@@ -12,9 +12,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Disable foreign key checks
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-
         // List of tables with branch_name foreign key
         $tables = [
             'header',
@@ -30,37 +27,42 @@ return new class extends Migration
             'bir_detailed'
         ];
 
+        // Disable foreign key triggers (PostgreSQL specific)
+        DB::statement('SET session_replication_role = replica;');
+
         foreach ($tables as $table) {
             if (Schema::hasTable($table) && Schema::hasColumn($table, 'branch_name')) {
-                // Drop existing foreign key constraint if it exists
-                Schema::table($table, function (Blueprint $blueprint) use ($table) {
-                    $foreignKeys = DB::select(
-                        "SELECT CONSTRAINT_NAME 
-                        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
-                        WHERE TABLE_NAME = ? 
-                        AND COLUMN_NAME = 'branch_name' 
-                        AND REFERENCED_TABLE_NAME IS NOT NULL", 
-                        [$table]
-                    );
+                // Get the current foreign key constraints
+                $constraints = DB::select(
+                    "SELECT conname 
+                    FROM pg_constraint 
+                    JOIN pg_namespace ON pg_namespace.oid = connamespace 
+                    JOIN pg_class ON pg_class.oid = conrelid 
+                    WHERE contype = 'f' 
+                    AND pg_class.relname = ? 
+                    AND pg_get_constraintdef(oid) LIKE '%branch_name%';",
+                    [$table]
+                );
 
-                    foreach ($foreignKeys as $foreignKey) {
-                        $blueprint->dropForeign([$foreignKey->CONSTRAINT_NAME]);
-                    }
-                });
+                // Drop existing foreign key constraints
+                foreach ($constraints as $constraint) {
+                    DB::statement("ALTER TABLE {$table} DROP CONSTRAINT IF EXISTS {$constraint->conname} CASCADE;");
+                }
 
                 // Re-add the foreign key with ON UPDATE CASCADE and ON DELETE CASCADE
-                Schema::table($table, function (Blueprint $blueprint) use ($table) {
-                    $blueprint->foreign('branch_name')
-                             ->references('branch_name')
-                             ->on('branches')
-                             ->onUpdate('cascade')
-                             ->onDelete('cascade');
-                });
+                DB::statement("
+                    ALTER TABLE {$table} 
+                    ADD CONSTRAINT {$table}_branch_name_foreign 
+                    FOREIGN KEY (branch_name) 
+                    REFERENCES branches (branch_name) 
+                    ON UPDATE CASCADE 
+                    ON DELETE CASCADE;
+                ");
             }
         }
 
-        // Re-enable foreign key checks
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        // Re-enable foreign key triggers (PostgreSQL specific)
+        DB::statement('SET session_replication_role = DEFAULT;');
     }
 
     /**
