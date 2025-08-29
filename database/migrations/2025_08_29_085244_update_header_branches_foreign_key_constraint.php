@@ -33,7 +33,7 @@ return new class extends Migration
         foreach ($tables as $table) {
             if (Schema::hasTable($table) && Schema::hasColumn($table, 'branch_name')) {
                 // Drop existing foreign key constraint if it exists
-                Schema::table($table, function (Blueprint $table) use ($table) {
+                Schema::table($table, function (Blueprint $blueprint) use ($table) {
                     $foreignKeys = DB::select(
                         "SELECT CONSTRAINT_NAME 
                         FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
@@ -44,17 +44,17 @@ return new class extends Migration
                     );
 
                     foreach ($foreignKeys as $foreignKey) {
-                        $table->dropForeign([$foreignKey->CONSTRAINT_NAME]);
+                        $blueprint->dropForeign([$foreignKey->CONSTRAINT_NAME]);
                     }
                 });
 
                 // Re-add the foreign key with ON UPDATE CASCADE and ON DELETE CASCADE
-                Schema::table($table, function (Blueprint $table) use ($table) {
-                    $table->foreign('branch_name')
-                          ->references('branch_name')
-                          ->on('branches')
-                          ->onUpdate('cascade')
-                          ->onDelete('cascade');
+                Schema::table($table, function (Blueprint $blueprint) use ($table) {
+                    $blueprint->foreign('branch_name')
+                             ->references('branch_name')
+                             ->on('branches')
+                             ->onUpdate('cascade')
+                             ->onDelete('cascade');
                 });
             }
         }
