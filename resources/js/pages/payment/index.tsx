@@ -103,11 +103,19 @@ export default function PaymentIndex() {
     };
 
     const mergeData = () => {
+        console.log('Merging payment data:', paymentData);
         const merged: { [key: string]: MergedPaymentData } = {};
         const grandTotals: { [key: string]: number } = {};
 
         paymentData.forEach(item => {
             const dateKey = item.date;
+            const amount = Number(item['Total Amount']);
+            
+            if (isNaN(amount)) {
+                console.error('Invalid amount for item:', item);
+                return; // Skip invalid amounts
+            }
+
             if (!merged[dateKey]) {
                 merged[dateKey] = {
                     date: item.date,
@@ -124,27 +132,27 @@ export default function PaymentIndex() {
             // Aggregate for daily merged data (used for graphs and daily view)
             switch (item.payment_type) {
                 case 'Cash':
-                    merged[dateKey].cash += item['Total Amount'];
+                    merged[dateKey].cash += amount;
                     break;
                 case 'GCash':
-                    merged[dateKey].gcash += item['Total Amount'];
+                    merged[dateKey].gcash += amount;
                     break;
                 case 'Card':
                 case 'Visa':
                 case 'Mastercard':
-                    merged[dateKey].card += item['Total Amount'];
+                    merged[dateKey].card += amount;
                     break;
                 default:
-                    merged[dateKey].other += item['Total Amount'];
+                    merged[dateKey].other += amount;
                     break;
             }
-            merged[dateKey].total += item['Total Amount'];
+            merged[dateKey].total += amount;
 
             // Aggregate for grand totals by payment type (used for merged table view)
             if (grandTotals[item.payment_type]) {
-                grandTotals[item.payment_type] += item['Total Amount'];
+                grandTotals[item.payment_type] += amount;
             } else {
-                grandTotals[item.payment_type] = item['Total Amount'];
+                grandTotals[item.payment_type] = amount;
             }
         });
 
