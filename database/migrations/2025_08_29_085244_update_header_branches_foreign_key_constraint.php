@@ -27,6 +27,36 @@ return new class extends Migration
             'bir_detailed'
         ];
 
+        // Collect all distinct branch_names from all tables
+        $all_branch_names = [];
+        foreach ($tables as $table) {
+            if (Schema::hasTable($table) && Schema::hasColumn($table, 'branch_name')) {
+                $branch_names_in_table = DB::table($table)->whereNotNull('branch_name')->distinct()->pluck('branch_name');
+                foreach ($branch_names_in_table as $branch_name) {
+                    $all_branch_names[$branch_name] = true;
+                }
+            }
+        }
+        $all_branch_names = array_keys($all_branch_names);
+
+        // Find which branch_names are not in the branches table
+        $existing_branches = DB::table('branches')->pluck('branch_name')->all();
+        $missing_branches = array_diff($all_branch_names, $existing_branches);
+
+        // Insert missing branches
+        if (!empty($missing_branches)) {
+            $branches_to_insert = [];
+            foreach ($missing_branches as $branch_name) {
+                // Ensure we don't insert null or empty strings
+                if (!empty($branch_name)) {
+                    $branches_to_insert[] = ['branch_name' => $branch_name];
+                }
+            }
+            if (!empty($branches_to_insert)) {
+                DB::table('branches')->insert($branches_to_insert);
+            }
+        }
+
         foreach ($tables as $table) {
             if (Schema::hasTable($table) && Schema::hasColumn($table, 'branch_name')) {
                 // Get the current foreign key constraints
