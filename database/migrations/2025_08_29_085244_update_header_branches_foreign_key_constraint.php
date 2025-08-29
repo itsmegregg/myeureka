@@ -27,9 +27,6 @@ return new class extends Migration
             'bir_detailed'
         ];
 
-        // Disable foreign key triggers (PostgreSQL specific)
-        DB::statement('SET session_replication_role = replica;');
-
         foreach ($tables as $table) {
             if (Schema::hasTable($table) && Schema::hasColumn($table, 'branch_name')) {
                 // Get the current foreign key constraints
@@ -40,7 +37,7 @@ return new class extends Migration
                     JOIN pg_class ON pg_class.oid = conrelid 
                     WHERE contype = 'f' 
                     AND pg_class.relname = ? 
-                    AND pg_get_constraintdef(oid) LIKE '%branch_name%';",
+                    AND pg_get_constraintdef(pg_constraint.oid) LIKE '%branch_name%';",
                     [$table]
                 );
 
@@ -60,9 +57,6 @@ return new class extends Migration
                 ");
             }
         }
-
-        // Re-enable foreign key triggers (PostgreSQL specific)
-        DB::statement('SET session_replication_role = DEFAULT;');
     }
 
     /**
