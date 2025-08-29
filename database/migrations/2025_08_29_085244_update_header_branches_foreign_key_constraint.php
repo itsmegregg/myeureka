@@ -43,17 +43,40 @@ return new class extends Migration
         $existing_branches = DB::table('branches')->pluck('branch_name')->all();
         $missing_branches = array_diff($all_branch_names, $existing_branches);
 
+        // Get a valid store_name to use for any new branches
+        $default_store = DB::table('stores')->first();
+        
+        // If no store exists, create one
+        if (!$default_store) {
+            $default_store_name = 'DEFAULT_STORE';
+            DB::table('stores')->insert([
+                'store_name' => $default_store_name,
+                'store_description' => 'Default store created by migration',
+                'active' => 'yes'
+            ]);
+        } else {
+            $default_store_name = $default_store->store_name;
+        }
+        
         // Insert missing branches
         if (!empty($missing_branches)) {
-            $branches_to_insert = [];
             foreach ($missing_branches as $branch_name) {
                 // Ensure we don't insert null or empty strings
                 if (!empty($branch_name)) {
-                    $branches_to_insert[] = ['branch_name' => $branch_name];
+                    // Check if branch already exists
+                    $branch_exists = DB::table('branches')
+                        ->where('branch_name', $branch_name)
+                        ->exists();
+                    
+                    if (!$branch_exists) {
+                        // Insert with required store_name
+                        DB::table('branches')->insert([
+                            'branch_name' => $branch_name,
+                            'store_name' => $default_store_name,
+                            'status' => 'active'
+                        ]);
+                    }
                 }
-            }
-            if (!empty($branches_to_insert)) {
-                DB::table('branches')->insert($branches_to_insert);
             }
         }
 
