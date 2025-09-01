@@ -31,6 +31,15 @@ import DateRangePickernew from "@/components/public-components/date-range-picker
 import { IconFileTypeXls, IconFileTypePdf } from '@tabler/icons-react';
 import { useTerminalStore } from '@/store/useTerminal';
 import TerminalSelect from "@/components/public-components/terminal-select";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import HorizontalBarGraph from "./graphs/horizontalBarGraph";
+import { BarChart } from 'lucide-react';
 
 interface ComboItem {
     product_code: string;
@@ -78,6 +87,7 @@ export default function PerItem() {
     const [isLoading, setIsLoading] = useState(false);
     const [isPdfLoading, setIsPdfLoading] = useState(false);
     const [isExcelLoading, setIsExcelLoading] = useState(false);
+    const [isChartOpen, setIsChartOpen] = useState(false);
 
     const {selectedBranch} = useBranchStore();
     const {dateRange: selectedDateRange} = useDateRange();
@@ -345,6 +355,34 @@ export default function PerItem() {
                                         </Button>
                                         </div>
                                         <div className="space-x-2 flex items-center">
+                                            <Dialog open={isChartOpen} onOpenChange={setIsChartOpen}>
+                                                <DialogTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        disabled={!productsData || productsData.length === 0}
+                                                    >
+                                                        <BarChart className="mr-2 h-4 w-4" />
+                                                        View Chart
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="w-full h-full">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Top 10 Selling Items</DialogTitle>
+                                                    </DialogHeader>
+                                                    <HorizontalBarGraph
+                                                        title="Item Sales by Total Net Sales"
+                                                        data={productsData
+                                                            .sort((a, b) => b.total_net_sales - a.total_net_sales)
+                                                            .slice(0, 10)
+                                                            .map(product => ({
+                                                                name: product.product_description,
+                                                                y: product.total_net_sales
+                                                            }))
+                                                            .reverse()
+                                                        }
+                                                    />
+                                                </DialogContent>
+                                            </Dialog>
                                        
                                         <Button 
                                             variant="ghost" 
