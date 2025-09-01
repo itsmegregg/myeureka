@@ -14,6 +14,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\GovernmentDataController;
+use App\Http\Controllers\TimeBasedController;
 
 
 use App\Http\Controllers\BIRSummaryController;
@@ -72,6 +73,7 @@ Route::get('/sales/discount-report', [DiscountController::class, 'discountReport
 Route::get('/sales/payment-details', [PaymentDetailsController::class, 'getPaymentData']);
 Route::get('/sales/hourly-report', [HourlyController::class, 'getHourlyData']);
 
+
 //bir detailed apis
 Route::get('/bir/detailed-report', [BIRDetailedController::class, 'index']);
 Route::get('/bir/detailed-report/export', [BIRDetailedController::class, 'export']);
@@ -113,3 +115,7 @@ Route::post('/receipts/download-consolidated', [App\Http\Controllers\API\Receipt
 Route::get('/zreadDateRange', [App\Http\Controllers\ZreadController::class, 'searchByDateRange']);
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth:sanctum');
+
+
+Route::get('/orderTypeDate', [App\Http\Controllers\OrderTypeController::class, 'GetOrderType']);
+Route::get('/sales/time-based', [TimeBasedController::class, 'getTimeBasedReport']);

@@ -136,7 +136,7 @@ export default function HourlyIndex() {
                         <div className="px-4 lg:px-6">
                             <div className="flex flex-col gap-4 max-w-full overflow-hidden">
                                 <TextHeader title="Hourly" />
-                                <div className="flex flex-col md:flex-col lg:flex-row md:justify-between lg:justify-between gap-4">
+                                <div className="flex flex-col md:flex-col lg:flex-row md:justify-between lg:justify-between ">
                                     <div className="flex flex-wrap items-end gap-2">
                                         <BranchSelect />
                                         <DateRangePickernew />
