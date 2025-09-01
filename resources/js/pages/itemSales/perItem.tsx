@@ -31,13 +31,6 @@ import DateRangePickernew from "@/components/public-components/date-range-picker
 import { IconFileTypeXls, IconFileTypePdf } from '@tabler/icons-react';
 import { useTerminalStore } from '@/store/useTerminal';
 import TerminalSelect from "@/components/public-components/terminal-select";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog";
 import HorizontalBarGraph from "./graphs/horizontalBarGraph";
 import { BarChart } from 'lucide-react';
 
@@ -52,6 +45,7 @@ interface ProductProps {
     product_code: string;
     product_description: string;
     total_quantity: number;
+    quantity: number;
     total_net_sales: number;
     combo_items?: ComboItem[];
 }
@@ -87,7 +81,8 @@ export default function PerItem() {
     const [isLoading, setIsLoading] = useState(false);
     const [isPdfLoading, setIsPdfLoading] = useState(false);
     const [isExcelLoading, setIsExcelLoading] = useState(false);
-    const [isChartOpen, setIsChartOpen] = useState(false);
+    const [isViewToggleLoading, setIsViewToggleLoading] = useState(false);
+    const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
 
     const {selectedBranch} = useBranchStore();
     const {dateRange: selectedDateRange} = useDateRange();
@@ -355,142 +350,135 @@ export default function PerItem() {
                                         </Button>
                                         </div>
                                         <div className="space-x-2 flex items-center">
-                                            <Dialog open={isChartOpen} onOpenChange={setIsChartOpen}>
-                                                <DialogTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        disabled={!productsData || productsData.length === 0}
-                                                    >
-                                                        <BarChart className="mr-2 h-4 w-4" />
-                                                        View Chart
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent className="w-full h-full">
-                                                    <DialogHeader>
-                                                        <DialogTitle>Top 10 Selling Items</DialogTitle>
-                                                    </DialogHeader>
-                                                    <HorizontalBarGraph
-                                                        title="Item Sales by Total Net Sales"
-                                                        data={productsData
-                                                            .sort((a, b) => b.total_net_sales - a.total_net_sales)
-                                                            .slice(0, 10)
-                                                            .map(product => ({
-                                                                name: product.product_description,
-                                                                y: product.total_net_sales
-                                                            }))
-                                                            .reverse()
-                                                        }
-                                                    />
-                                                </DialogContent>
-                                            </Dialog>
-                                       
-                                        <Button 
-                                            variant="ghost" 
-                                            onClick={handleExportExcel}
-                                            disabled={isExcelLoading || !productsData || productsData.length === 0}
-                                        >
-                                            {isExcelLoading ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Exporting...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <IconFileTypeXls className="mr-2 h-4 w-4" />
-                                                    Excel
-                                                </>
-                                            )}
-                                        </Button>
-
-                                        <Button 
-                                        variant="ghost" 
-                                        onClick={handleExportPDF} 
-                                        disabled={isPdfLoading || !productsData || productsData.length === 0}
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setIsViewToggleLoading(true);
+                                                    // Short timeout to allow loading state to render before view change
+                                                    setTimeout(() => {
+                                                        setViewMode(viewMode === 'table' ? 'chart' : 'table');
+                                                        setIsViewToggleLoading(false);
+                                                    }, 400);
+                                                }}
+                                                disabled={!productsData || productsData.length === 0 || isViewToggleLoading}
                                             >
-                                        {isPdfLoading ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Exporting...
-                                            </>
+                                                {isViewToggleLoading ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <BarChart className="mr-2 h-4 w-4" />
+                                                )}
+                                                {viewMode === 'table' ? 'View Chart' : 'View Table'}
+                                            </Button>
+                                       
+                                            <Button 
+                                                variant="ghost" 
+                                                onClick={handleExportExcel}
+                                                disabled={isExcelLoading || !productsData || productsData.length === 0}
+                                            >
+                                                {isExcelLoading ? (
+                                                    <>
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                        Exporting...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <IconFileTypeXls className="mr-2 h-4 w-4" />
+                                                        Excel
+                                                    </>
+                                                )}
+                                            </Button>
+
+                                            <Button 
+                                                variant="ghost" 
+                                                onClick={handleExportPDF} 
+                                                disabled={isPdfLoading || !productsData || productsData.length === 0}
+                                            >
+                                                {isPdfLoading ? (
+                                                    <>
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                        Exporting...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <IconFileTypePdf className="mr-2 h-4 w-4" />
+                                                        PDF
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <div className="w-full">
+                                        {viewMode === 'chart' ? (
+                                            <div className="rounded-md border p-4 bg-white shadow-sm">
+                                               <HorizontalBarGraph items={productsData} />
+                                            </div>
                                         ) : (
                                             <>
-                                                <IconFileTypePdf className="mr-2 h-4 w-4" />
-                                                PDF
+                                                <div className="rounded-md border">
+                                                    <Table>
+                                                        <TableHeader>
+                                                            <TableRow>
+                                                                <TableHead>Product Code</TableHead>
+                                                                <TableHead>Product Description</TableHead>
+                                                                <TableHead>Total Quantity</TableHead>
+                                                                <TableHead>Total Net Sales</TableHead>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
+                                                            {isLoading ? (
+                                                                [...Array(10)].map((_, i) => (
+                                                                    <TableRow key={`loading-${i}`}>
+                                                                        <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                                                                        <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                                                                        <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                                                                        <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                                                                    </TableRow>
+                                                                ))
+                                                            ) : productsData && productsData.length > 0 ? (
+                                                                productsData.flatMap((item, index) => {
+                                                                    const rows = [
+                                                                        <TableRow key={`product-${index}`}>
+                                                                            <TableCell>{item.product_code}</TableCell>
+                                                                            <TableCell>{item.product_description}</TableCell>
+                                                                            <TableCell>{item.total_quantity}</TableCell>
+                                                                            <TableCell>{item.total_net_sales === 0 ? '-' : Number(item.total_net_sales).toFixed(2)}</TableCell>
+                                                                        </TableRow>
+                                                                    ];
+
+                                                                    if (item.combo_items && item.combo_items.length > 0) {
+                                                                        item.combo_items.forEach((comboItem, comboIndex) => {
+                                                                            rows.push(
+                                                                                <TableRow key={`combo-${index}-${comboIndex}`} className="bg-primary-foreground">
+                                                                                    <TableCell className="pl-8">└ {comboItem.product_code}</TableCell>
+                                                                                    <TableCell className="italic">{comboItem.product_description}</TableCell>
+                                                                                    <TableCell>{comboItem.total_quantity}</TableCell>
+                                                                                    <TableCell>{comboItem.net_sales === 0 ? '-' : Number(comboItem.net_sales).toFixed(2)}</TableCell>
+                                                                                </TableRow>
+                                                                            );
+                                                                        });
+                                                                    }
+
+                                                                    return rows;
+                                                                })
+                                                            ) : (
+                                                                <TableRow>
+                                                                    <TableCell colSpan={4} className="h-24 text-center">No results found.</TableCell>
+                                                                </TableRow>
+                                                            )}
+                                                        </TableBody>
+                                                    </Table>
+                                                </div>
+                                                <div className="flex items-center justify-between py-4">
+                                                    <div>
+                                                        {productsData.length > 0 && (
+                                                            <p className="text-sm text-gray-700">
+                                                                Showing <span className="font-medium">{productsData.length}</span> results
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </>
                                         )}
-                                        </Button>
-                                    </div>
-                                    </div>
-                                    <div>
-                                        <div className="rounded-md border">
-                                          
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Product Code</TableHead>
-                                                        <TableHead>Product Description</TableHead>
-                                                        <TableHead>Total Quantity</TableHead>
-                                                        <TableHead>Total Net Sales</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {isLoading ? (
-                                                        // Loading skeleton rows
-                                                        [...Array(10)].map((_, i) => (
-                                                            <TableRow key={`loading-${i}`}>
-                                                                <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
-                                                                <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
-                                                                <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
-                                                                <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableCell>
-                                                            </TableRow>
-                                                        ))
-                                                    ) : productsData && productsData.length > 0 ? (
-                                                        productsData.flatMap((item, index) => {
-                                                            // Create an array with the main product row
-                                                            const rows = [
-                                                                <TableRow key={`product-${index}`}>
-                                                                    <TableCell>{item.product_code}</TableCell>
-                                                                    <TableCell>{item.product_description}</TableCell>
-                                                                    <TableCell>{item.total_quantity}</TableCell>
-                                                                    <TableCell>{item.total_net_sales === 0 ? '-' : Number(item.total_net_sales).toFixed(2)}</TableCell>
-                                                                </TableRow>
-                                                            ];
-                                                            
-                                                            // If this product has combo items, add them as sub-rows
-                                                            if (item.combo_items && item.combo_items.length > 0) {
-                                                                item.combo_items.forEach((comboItem, comboIndex) => {
-                                                                    rows.push(
-                                                                        <TableRow key={`combo-${index}-${comboIndex}`} className="bg-primary-foreground">
-                                                                            <TableCell className="pl-8">└ {comboItem.product_code}</TableCell>
-                                                                            <TableCell className="italic">{comboItem.product_description   }</TableCell>
-                                                                            <TableCell>{comboItem.total_quantity}</TableCell>
-                                                                            <TableCell>{comboItem.net_sales === 0 ? '-' : Number(comboItem.net_sales).toFixed(2)}</TableCell>
-                                                                        </TableRow>
-                                                                    );
-                                                                });
-                                                            }
-                                                            
-                                                            return rows;
-                                                        })
-                                                    ) : (
-                                                        <TableRow>
-                                                            <TableCell colSpan={4} className="h-24 text-center">No results found.</TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                         
-                                        </div>
-                                        {/* Result count display */}
-                                        <div className="flex items-center justify-between py-4">
-                                            <div>
-                                                {productsData.length > 0 && (
-                                                    <p className="text-sm text-gray-700">
-                                                        Showing <span className="font-medium">{productsData.length}</span> results
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
                                     </div>
                             </div>
                         </div>
