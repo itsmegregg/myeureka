@@ -74,8 +74,7 @@ export default function CategoryPieChart({ categories, chartType }: PieChartProp
                     enabled: true,
                     format: '<b>{point.name}</b>: {point.percentage:.1f}%'
                 },
-                size: '100%',
-                center: ['50%', '50%'],
+                size: '80%',
                 showInLegend: true
             }
         },
