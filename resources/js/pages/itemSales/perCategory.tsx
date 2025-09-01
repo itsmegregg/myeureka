@@ -5,7 +5,8 @@ import BranchSelect from "@/components/public-components/branch-select";
 import DateRangePickernew from "@/components/public-components/date-range-picker";
 import CategorySelect from "@/components/public-components/category-select";
 import { Button } from "@/components/ui/button";
-import { Search, AlertCircle, Loader2, File, FileSpreadsheet } from "lucide-react";
+import { Search, AlertCircle, Loader2, File, FileSpreadsheet, BarChart, PieChart } from "lucide-react";
+import CategoryPieChart from "./graphs/categoryPieChart";
 import { useState, useEffect } from "react";
 import { useBranchStore } from "@/store/useBranch";
 import { useStore } from "@/store/useStore";
@@ -75,6 +76,9 @@ export default function PerCategory() {
     const [isFetching, setIsFetching] = useState(false);
     const [isPdfLoading, setIsPdfLoading] = useState(false);
     const [isExcelLoading, setIsExcelLoading] = useState(false);
+    const [isViewToggleLoading, setIsViewToggleLoading] = useState(false);
+    const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
+    const [chartType, setChartType] = useState<'quantity' | 'sales'>('quantity');
 
     const [error, setError] = useState<string | null>(null);
     const { selectedBranch } = useBranchStore();
@@ -399,7 +403,25 @@ export default function PerCategory() {
                                         
                                           </div>
                                           <div className="space-x-2 flex items-center">
-                                     
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setIsViewToggleLoading(true);
+                                                    setTimeout(() => {
+                                                        setViewMode(viewMode === 'table' ? 'chart' : 'table');
+                                                        setIsViewToggleLoading(false);
+                                                    }, 400);
+                                                }}
+                                                disabled={!categories || categories.length === 0 || isViewToggleLoading}
+                                            >
+                                                {isViewToggleLoading ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    viewMode === 'table' ? <PieChart className="mr-2 h-4 w-4" /> : <BarChart className="mr-2 h-4 w-4" />
+                                                )}
+                                                {viewMode === 'table' ? 'View Chart' : 'View Table'}
+                                            </Button>
+                                            
                                             <Button 
                                                 onClick={handleExportExcel} 
                                                 variant="ghost"
@@ -447,9 +469,30 @@ export default function PerCategory() {
                                         </div>
                                     </div>
                                 ) : categories.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 w-full px-0">
-                                        {categories.map(category => (
-                                            <Card key={category.category_code}>
+                                    viewMode === 'chart' ? (
+                                        <div className="mt-4 rounded-md border p-4 bg-white shadow-sm">
+                                            <div className="mb-4 flex justify-center space-x-4">
+                                                <Button
+                                                    size="sm"
+                                                    variant={chartType === 'quantity' ? "default" : "outline"}
+                                                    onClick={() => setChartType('quantity')}
+                                                >
+                                                    By Quantity
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant={chartType === 'sales' ? "default" : "outline"}
+                                                    onClick={() => setChartType('sales')}
+                                                >
+                                                    By Sales
+                                                </Button>
+                                            </div>
+                                            <CategoryPieChart categories={categories} chartType={chartType} />
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 w-full px-0">
+                                            {categories.map(category => (
+                                                <Card key={category.category_code}>
                                                 <CardHeader className="p-4">
                                                     <CardTitle className="text-base sm:text-lg flex flex-col sm:flex-row sm:items-center gap-2">
                                                         <span className="truncate">{category.category_description} ({category.category_code})</span>
@@ -502,8 +545,9 @@ export default function PerCategory() {
                                                     </div>
                                                 </CardContent>
                                             </Card>
-                                        ))}
-                                    </div>
+                                            ))}
+                                        </div>
+                                    )
                                 ) : (
                                     <div className="text-center py-10 mt-4 px-2 border rounded-md bg-muted/10">
                                         <p className="text-muted-foreground">No data to display. Use the search button to load data.</p>
