@@ -216,10 +216,7 @@ class ReceiptController extends Controller
                 $query->where('branch_name', $branch);
             }
 
-            if ($request->has('store_name') && $request->store_name !== 'ALL') {
-                $query->where('store_name', $request->store_name);
-            }
-
+           
 
             $receipts = $query->orderBy('date', 'asc')
                 ->orderBy('si_number', 'asc')
