@@ -104,6 +104,7 @@ Route::get('/payment-list', [PaymentDetailsController::class, 'paymentList']);
 Route::post('/run-command', [App\Http\Controllers\API\UpdateCommandController::class, 'runCommand']);
 
 //receipt data
+   Route::post('/receipt', [App\Http\Controllers\API\ReceiptController::class, 'store']);
 Route::post('/receipts/search-via-si-number', [App\Http\Controllers\API\ReceiptController::class, 'searchViaSiNumber']);
 Route::get('/receipts/search-by-date-range', [App\Http\Controllers\API\ReceiptController::class, 'searchByDateRange']);
 Route::post('/receipts/download-consolidated', [App\Http\Controllers\API\ReceiptController::class, 'downloadConsolidated']);
