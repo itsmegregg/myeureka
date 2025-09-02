@@ -49,30 +49,50 @@ async function processFile(filePath) {
         const branchName = branchPart ? branchPart.replace(/\_\d{4}\-\d{2}\-\d{2}$/, '') : '';
         const date = datePart || '';
 
-        // Read file content and prepare request data
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const requestData = {
-            date: date.replace(/-/g, ''), // Format date as YYYYMMDD
-            branch_name: branchName,
-            file_content: fileContent,
-            file_name: fileName,
-            mime_type: 'text/plain'
-        };
+        // Create FormData for file upload
+        const form = new FormData();
+        form.append('file', fs.createReadStream(filePath));
+        form.append('date', date.replace(/-/g, '')); // Format date as YYYYMMDD
+        form.append('branch_name', branchName);
+        form.append('type', 'zread');
 
-        await axios.post(CONFIG.apiUrl, requestData, {
+        const response = await axios.post(CONFIG.apiUrl, form, {
             timeout: CONFIG.timeout,
             headers: {
-                'Content-Type': 'application/json',
+                ...form.getHeaders(),
                 'Accept': 'application/json'
-            }
+            },
+            validateStatus: false // Don't throw on HTTP error status
         });
         
-        log(`ZREAD ${date}-${branchName} Successfully uploaded.`, 'green');
-        success = true;
+        if (response.status >= 200 && response.status < 300) {
+            log(`ZREAD ${date}-${branchName} Successfully uploaded.`, 'green');
+            success = true;
+        } else {
+            throw new Error(JSON.stringify({
+                status: response.status,
+                data: response.data,
+                requestData: {
+                    ...requestData,
+                    file_content: requestData.file_content.substring(0, 100) + '...' // Truncate content for logging
+                }
+            }));
+        }
     } catch (error) {
         log(`Failed to process ${fileName}`, 'red');
-        if (error.response?.data?.message) {
-            log(`Error: ${error.response.data.message}`, 'red');
+        try {
+            const errorData = JSON.parse(error.message);
+            log(`Status: ${errorData.status}`, 'red');
+            if (errorData.data?.errors) {
+                log('Validation Errors:', 'red');
+                console.error(JSON.stringify(errorData.data.errors, null, 2));
+            } else if (errorData.data?.message) {
+                log(`Error: ${errorData.data.message}`, 'red');
+            }
+            log('Request Data:', 'yellow');
+            console.error(JSON.stringify(errorData.requestData, null, 2));
+        } catch (e) {
+            log(`Error: ${error.message}`, 'red');
         }
     }
     
@@ -117,7 +137,7 @@ if (txtFiles.length === 0) {
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-    colorLog('Fatal error:', 'red');
+    log('Fatal error:', 'red');
     console.error(error);
     process.exit(1);
 });

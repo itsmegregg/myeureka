@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useBranchStore } from "@/store/useBranch";
 import axios from 'axios';
-import { Eye } from 'lucide-react';
+import { Eye, File as FileIcon } from 'lucide-react';
 import { FileText } from "lucide-react";
 import { useDateRange } from "@/store/useDateRange";
 import { format, format as formatDate } from "date-fns";
@@ -73,61 +73,101 @@ export default function ReceiptsIndex() {
     }
 
     async function openViewer(receipt: Receipt) {
-        const href = viewUrl(receipt.file_path);
         setViewerTitle(`Receipt ${receipt.si_number} • ${receipt.branch_name}`);
         setViewerOpen(true);
         setViewerLoading(true);
         setViewerText(null);
         setViewerUrl(null);
+        
         try {
-            const res = await fetch(href);
-            if (!res.ok) {
-                setViewerIsText(true);
-                setViewerText('Unable to load receipt content. The file may not exist.');
-                return;
-            }
-            const ct = res.headers.get('content-type') || '';
-            if (ct.includes('text') || ct.includes('json') || ct.includes('xml')) {
-                const text = await res.text();
-                setViewerIsText(true);
-                setViewerText(text);
-            } else {
-                // Non-text: preview via iframe
-                setViewerIsText(false);
-                setViewerUrl(href);
-            }
-        } catch (e) {
+            // Use the new API endpoint to get file content
+            const response = await axios.get(`/api/receipts/${receipt.id}/file`, {
+                responseType: 'text',
+                headers: {
+                    'Accept': 'text/plain',
+                    'Content-Type': 'text/plain'
+                }
+            });
+            
             setViewerIsText(true);
-            setViewerText('Error fetching receipt content.');
+            setViewerText(response.data);
+        } catch (error) {
+            console.error('Error loading receipt content:', error);
+            setViewerIsText(true);
+            setViewerText('Unable to load receipt content. Please try again later.');
         } finally {
             setViewerLoading(false);
         }
     }
 
-    async function downloadTxt(path: string, filename: string) {
+    async function downloadPdf(receipt: Receipt, filename: string) {
         try {
-            const response = await fetch(viewUrl(path));
-            if (!response.ok) {
-                alert('Receipt file not found.');
+            const response = await axios.get(`/api/receipts/${receipt.id}/file`, {
+                responseType: 'text',
+            });
+
+            const text = response.data;
+            if (!text) {
+                alert("File content not available.");
                 return;
             }
-            const contentType = response.headers.get('content-type');
-            let fileContent: string;
-            if (contentType && contentType.includes('text')) fileContent = await response.text();
-            else fileContent = `[File: ${path}]\n\nThis file is not text-based. Use "View Receipt" to open it.`;
 
-            const blob = new Blob([fileContent], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${filename}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            let jsPDF: any;
+            try {
+                ({ jsPDF } = await import("jspdf"));
+            } catch (e) {
+                console.error("jsPDF not installed", e);
+                alert("PDF generation requires 'jspdf'. Please install: npm i jspdf");
+                return;
+            }
+
+            const doc = new jsPDF({ unit: "pt", format: "a4" });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 40;
+            const maxWidth = pageWidth - margin * 2;
+            const lineHeight = 14;
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(10);
+
+            const lines = doc.splitTextToSize(text.replace(/\r\n/g, "\n"), maxWidth);
+            let y = margin;
+            for (const line of lines) {
+                if (y + lineHeight > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+                doc.text(line, margin, y);
+                y += lineHeight;
+            }
+
+            doc.save(`${filename}.pdf`);
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('Error generating PDF.');
+        }
+    }
+
+    async function downloadTxt(receipt: Receipt, filename: string) {
+        try {
+            const response = await axios.get(`/api/receipts/${receipt.id}/file`, {
+                responseType: 'blob',
+                headers: {
+                    'Accept': 'text/plain',
+                }
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${filename}.txt`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         } catch (error) {
             console.error('Error downloading file:', error);
-            alert('Error downloading receipt file.');
+            alert('Error downloading receipt file. Please try again.');
         }
     }
 
@@ -163,8 +203,8 @@ export default function ReceiptsIndex() {
            
       const params = {
         branch_name: selectedBranch?.branch_name ?? 'ALL',
-        from_date: selectedDateRange.from,
-        to_date: selectedDateRange.to,
+        from_date: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
+        to_date: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : '',
         store_name: selectedStore ?? 'ALL',
       };
 
@@ -310,9 +350,16 @@ export default function ReceiptsIndex() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => downloadTxt(receipt.file_path, baseName)}
+                  onClick={() => downloadTxt(receipt, baseName)}
                 >
                   TXT <FileText className="size-4 ml-2" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => downloadPdf(receipt, baseName)}
+                >
+                  PDF <FileIcon className="size-4 ml-2" />
                 </Button>
                 {/* PDF download removed as requested */}
                
@@ -356,7 +403,6 @@ export default function ReceiptsIndex() {
                                     <div className="grid grid-cols-4 gap-4 mt-5">
                                         {receipts.map((receipt: Receipt) => {
                                             const baseName = `receipt-${receipt.si_number}-${receipt.branch_name}-${receipt.type || 'general'}`;
-                                            const href = viewUrl(receipt.file_path);
                                             return (
                                                 <Card key={receipt.id} className="border-muted/50">
                                                     <CardContent className="pt-4">
@@ -375,13 +421,27 @@ export default function ReceiptsIndex() {
                                                                 <div className="text-xs text-muted-foreground break-all">{receipt.file_path}</div>
                                                             </div>
                                                             <div className="flex flex-wrap items-center gap-2">
-                                                                <Button variant="outline" size="sm" onClick={() => openViewer(receipt)}>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => openViewer(receipt)}
+                                                                >
                                                                     <Eye className="size-4 mr-2" /> View
                                                                 </Button>
-                                                                <Button variant="ghost" size="sm" onClick={() => downloadTxt(receipt.file_path, baseName)}>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => downloadTxt(receipt, baseName)}
+                                                                >
                                                                     TXT <FileText className="size-4 ml-2" />
                                                                 </Button>
-                                                                {/* PDF download removed as requested */}
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => downloadPdf(receipt, baseName)}
+                                                                >
+                                                                    PDF <FileIcon className="size-4 ml-2" />
+                                                                </Button>
                                                             </div>
                                                         </div>
                                                     </CardContent>

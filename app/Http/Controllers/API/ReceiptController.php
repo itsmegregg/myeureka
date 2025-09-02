@@ -10,14 +10,6 @@ use App\Http\Controllers\Controller;
 class ReceiptController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
@@ -52,13 +44,7 @@ class ReceiptController extends Controller
                     'file' => [
                         'required',
                         'file',
-                        function ($attribute, $value, $fail) {
-                            $extension = strtolower($value->getClientOriginalExtension());
-                            if (!in_array($extension, ['txt', 'log'])) {
-                                $fail('The file must be a TXT or LOG file.');
-                            }
-                        },
-                        'max:2048' // 2MB max
+                        'max:10240', // 10MB max
                     ]
                 ]);
             } elseif ($isDirectContent) {
@@ -70,7 +56,6 @@ class ReceiptController extends Controller
             }
 
             if ($validator->fails()) {
-                \Log::warning('Receipt validation failed', ['errors' => $validator->errors()]);
                 return response()->json([
                     'message' => 'Validation Error',
                     'errors' => $validator->errors()
@@ -94,50 +79,42 @@ class ReceiptController extends Controller
                 $fileContent = $request->file_content;
             }
 
-            // Upsert receipt record by unique keys (si_number, date, branch_name, type)
-            $attributes = [
-                'si_number' => $siNumber,
-                'date' => $date,
-                'branch_name' => $branchName,
-                'type' => $type,
-            ];
-
-            $values = [
-                'file_name' => $filename,
-                'file_content' => $fileContent,
-                'mime_type' => $mimeType,
-            ] + $attributes;
-
-            $receipt = Receipt::updateOrCreate($attributes, $values);
-
-            \Log::info('Receipt saved successfully', [
-                'id' => $receipt->id,
-                'created' => $receipt->wasRecentlyCreated,
-            ]);
+            // Create or update receipt
+            $receipt = Receipt::updateOrCreate(
+                [
+                    'si_number' => $siNumber,
+                    'date' => $date,
+                    'branch_name' => $branchName,
+                    'type' => $type,
+                ],
+                [
+                    'file_name' => $filename,
+                    'file_content' => $fileContent,
+                    'mime_type' => $mimeType,
+                ]
+            );
 
             return response()->json([
-                'message' => $receipt->wasRecentlyCreated ? 'Receipt file created successfully!' : 'Receipt file updated successfully!',
-                'action' => $receipt->wasRecentlyCreated ? 'created' : 'updated',
-                'created' => (bool) $receipt->wasRecentlyCreated,
-                'updated' => !$receipt->wasRecentlyCreated,
-                'data' => $receipt,
-                'file_name' => $filename
-            ], $receipt->wasRecentlyCreated ? 201 : 200);
+                'message' => 'Receipt uploaded successfully',
+                'data' => $receipt
+            ], 201);
 
-    } catch (\Exception $e) {
-        \Log::error('Receipt upload error', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
-        return response()->json([
-            'message' => 'Error uploading receipt file',
-            'error' => $e->getMessage(),
-            'details' => config('app.debug') ? $e->getTraceAsString() : 'Please check logs'
-        ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Receipt upload error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'message' => 'Error uploading receipt file',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
     }
-}
-    
+
+    /**
+     * Display the specified resource.
+     */
     public function show(Receipt $receipt)
     {
         return response()->json([
@@ -145,8 +122,9 @@ class ReceiptController extends Controller
         ]);
     }
 
-
-    
+    /**
+     * Search receipts by SI number and branch
+     */
     public function searchViaSiNumber(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -161,105 +139,40 @@ class ReceiptController extends Controller
             ], 422);
         }
 
-        if ($request->branch_name === 'ALL') {
-            $receipts = Receipt::where('si_number', $request->si_number)->get();
-        } else {
+        try {
             $receipts = Receipt::where('si_number', $request->si_number)
                 ->where('branch_name', $request->branch_name)
+                ->orderBy('date', 'desc')
                 ->get();
-        }
 
-        if ($receipts->isNotEmpty()) {
             return response()->json([
-                'message' => 'Receipts found!',
                 'data' => $receipts
-            ], 200);
-        } else {
-            return response()->json([
-                'message' => 'Receipt not found',
-                'data' => []
-            ], 404);
-        }
-    }
-
-    /**
-     * Search receipts by branch and date range (dates are strings in YYYYMMDD).
-     */
-    public function searchByDateRange(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'branch_name' => 'required|string|max:255',
-            // Accept either YYYYMMDD or YYYY-MM-DD
-            'from_date' => ['required','string','regex:/^(\\d{8}|\\d{4}-\\d{2}-\\d{2})$/'],
-            'to_date' => ['required','string','regex:/^(\\d{8}|\\d{4}-\\d{2}-\\d{2})$/'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation Error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-            $branch = $request->branch_name;
-            // Normalize to YYYYMMDD (remove dashes if present)
-            $from = preg_replace('/-/', '', $request->from_date);
-            $to = preg_replace('/-/', '', $request->to_date);
-
-            // Ensure from <= to
-            if ($from > $to) {
-                [$from, $to] = [$to, $from];
-            }
-
-            // Build query; if branch is 'ALL', skip branch filter
-            $query = Receipt::select([
-                'id',
-                'si_number',
-                'date',
-                'branch_name',
-                'file_name',
-                'mime_type',
-                'type',
-                'created_at',
-                'updated_at'
             ]);
-            
-            if (strtoupper(trim($branch)) !== 'ALL') {
-                $query->where('branch_name', $branch);
-            }
 
-            $receipts = $query
-                ->whereBetween('date', [$from, $to])
-                ->orderBy('date', 'asc')
-                ->orderBy('si_number', 'asc')
-                ->get();
-
-            return response()->json([
-                'message' => 'Receipts fetched successfully',
-                'data' => $receipts,
-            ], 200);
         } catch (\Exception $e) {
-            \Log::error('Receipt date-range search error', [
+            \Log::error('Receipt search error', [
                 'error' => $e->getMessage(),
+                'si_number' => $request->si_number,
+                'branch_name' => $request->branch_name
             ]);
+
             return response()->json([
-                'message' => 'Error searching receipts',
+                'message' => 'Error searching for receipt',
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
 
     /**
-     * Download a consolidated TXT of all receipt files within a date range for a branch.
-     * Dates are strings in YYYYMMDD.
+     * Search receipts by date range
      */
-    public function downloadConsolidated(Request $request)
+    public function searchByDateRange(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'branch_name' => 'required|string|max:255',
-            'from_date' => ['required','string','regex:/^\\d{8}$/'],
-            'to_date' => ['required','string','regex:/^\\d{8}$/'],
+            'branch_name' => 'required|string',
+            'from_date' => 'required|date_format:Y-m-d',
+            'to_date' => 'required|date_format:Y-m-d|after_or_equal:from_date',
+            'store_name' => 'sometimes|required|string',
         ]);
 
         if ($validator->fails()) {
@@ -273,7 +186,74 @@ class ReceiptController extends Controller
             $branch = $request->branch_name;
             $from = $request->from_date;
             $to = $request->to_date;
-            if ($from > $to) { [$from, $to] = [$to, $from]; }
+            
+            if ($from > $to) {
+                list($from, $to) = [$to, $from]; // Swap dates if from > to
+            }
+
+            $receipts = Receipt::select([
+                    'id',
+                    'si_number',
+                    'date',
+                    'branch_name',
+                    'file_name',
+                    'mime_type',
+                    'type',
+                    'created_at',
+                    'updated_at'
+                ])
+                ->where('branch_name', $branch)
+                ->whereBetween('date', [$from, $to])
+                ->orderBy('date', 'asc')
+                ->orderBy('si_number', 'asc')
+                ->get();
+
+            return response()->json([
+                'data' => $receipts
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Receipt date range search error', [
+                'error' => $e->getMessage(),
+                'branch' => $request->branch_name,
+                'from_date' => $request->from_date,
+                'to_date' => $request->to_date
+            ]);
+
+            return response()->json([
+                'message' => 'Error searching receipts by date range',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Download consolidated receipts as a single file
+     */
+    public function downloadConsolidated(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'branch_name' => 'required|string|max:255',
+            'from_date' => 'required|date_format:Y-m-d',
+            'to_date' => 'required|date_format:Y-m-d|after_or_equal:from_date',
+            'store_name' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation Error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $branch = $request->branch_name;
+            $from = $request->from_date;
+            $to = $request->to_date;
+            
+            if ($from > $to) {
+                list($from, $to) = [$to, $from]; // Swap dates if from > to
+            }
 
             $receipts = Receipt::select([
                     'id',
@@ -302,26 +282,69 @@ class ReceiptController extends Controller
 
             $lines = [];
             $separator = str_repeat('=', 80);
-            foreach ($receipts as $r) {
-                $header = $separator."\n".
-                          "SI: {$r->si_number} | Branch: {$r->branch_name} | Date: {$r->date} | Type: ".($r->type ?? 'general')."\n".
-                          $separator."\n";
+            
+            foreach ($receipts as $receipt) {
+                $header = $separator . "\n" .
+                         "SI: {$receipt->si_number} | Branch: {$receipt->branch_name} | " .
+                         "Date: {$receipt->date} | Type: " . ($receipt->type ?? 'general') . "\n" .
+                         $separator . "\n";
                 
-                $content = $r->file_content ?? "[ERROR] No content available for this receipt\n";
-                $lines[] = $header.$content."\n\n";
+                $content = $receipt->file_content ?? "[ERROR] No content available for this receipt\n";
+                $lines[] = $header . $content . "\n\n";
             }
 
             $combined = implode("", $lines);
-            $filename = 'receipts-'.preg_replace('/[^A-Za-z0-9_-]+/', '_', $branch)."-{$from}-{$to}.txt";
+            $filename = 'receipts-' . preg_replace('/[^A-Za-z0-9_-]+/', '_', $branch) . "-{$from}-{$to}.txt";
 
             return response($combined, 200, [
                 'Content-Type' => 'text/plain; charset=UTF-8',
-                'Content-Disposition' => 'attachment; filename="'.$filename.'"'
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"'
             ]);
+
         } catch (\Exception $e) {
-            \Log::error('Receipt consolidated download error', [ 'error' => $e->getMessage() ]);
+            \Log::error('Receipt consolidated download error', [
+                'error' => $e->getMessage(),
+                'branch' => $request->branch_name,
+                'from_date' => $request->from_date,
+                'to_date' => $request->to_date
+            ]);
+            
             return response()->json([
                 'message' => 'Error generating consolidated file',
+                'error' => config('app.debug') ? $e->getMessage() : null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Get the file content for a receipt
+     *
+     * @param int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function getFileContent($id)
+    {
+        try {
+            $receipt = Receipt::findOrFail($id);
+            
+            if (empty($receipt->file_content)) {
+                return response()->json([
+                    'message' => 'File content not found',
+                ], 404);
+            }
+
+            return response($receipt->file_content)
+                ->header('Content-Type', $receipt->mime_type ?? 'text/plain')
+                ->header('Content-Disposition', 'inline; filename="' . ($receipt->file_name ?? 'receipt.txt') . '"');
+                
+        } catch (\Exception $e) {
+            \Log::error('Error retrieving file content', [
+                'receipt_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'message' => 'Error retrieving file content',
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }

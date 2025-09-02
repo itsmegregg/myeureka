@@ -104,12 +104,11 @@ Route::get('/payment-list', [PaymentDetailsController::class, 'paymentList']);
 Route::post('/run-command', [App\Http\Controllers\API\UpdateCommandController::class, 'runCommand']);
 
 //receipt data
-Route::post('/receipt', [App\Http\Controllers\API\ReceiptController::class, 'store']);
 Route::post('/receipts/search-via-si-number', [App\Http\Controllers\API\ReceiptController::class, 'searchViaSiNumber']);
 Route::get('/receipts/search-by-date-range', [App\Http\Controllers\API\ReceiptController::class, 'searchByDateRange']);
 Route::post('/receipts/download-consolidated', [App\Http\Controllers\API\ReceiptController::class, 'downloadConsolidated']);
-// Route::get('/receipt', [ReceiptController::class, 'index']);
-
+Route::get('/receipts/{receipt}/file', [App\Http\Controllers\API\ReceiptController::class, 'getFileContent']);
+Route::apiResource('receipts', \App\Http\Controllers\API\ReceiptController::class)->only(['index', 'store', 'show']);
 
 //zread data
 Route::get('/zreadDateRange', [App\Http\Controllers\ZreadController::class, 'searchByDateRange']);

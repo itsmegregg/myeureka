@@ -43,13 +43,19 @@ async function processFile(filePath) {
         const filenameWithoutExt = fileName.replace(/\.txt$/i, '');
         const parts = filenameWithoutExt.split(' - ').map(part => part.trim());
         
-        const date = parts[1] || '';
+        // Extract date in YYYYMMDD format
+        let dateStr = parts[1] || '';
         const branchName = parts[2] || '';
+        
+        // Use the date as-is if it's in YYYYMMDD format, otherwise use current date
+        let formattedDate = /^\d{8}$/.test(dateStr) 
+            ? dateStr // Keep as YYYYMMDD
+            : new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 8); // Current date as YYYYMMDD
         
         // Prepare request data
         const requestData = {
             si_number: parts[0] || '',
-            date: date,
+            date: formattedDate,
             branch_name: branchName,
             type: parts[3] || 'SALES',
             file_content: fs.readFileSync(filePath, 'utf8'),
@@ -65,7 +71,7 @@ async function processFile(filePath) {
             }
         });
 
-        log(`RECEIPT ${date}-${branchName} Successfully uploaded.`, 'green');
+        log(`RECEIPT ${formattedDate}-${branchName} Successfully uploaded.`, 'green');
         success = true;
     } catch (error) {
         log(`Failed to process ${fileName}`, 'red');
@@ -78,13 +84,14 @@ async function processFile(filePath) {
     if (success) {
         try {
             const targetPath = path.join(CONFIG.uploadedDir, fileName);
-            // If file already exists, append a simple timestamp
+            // Only append timestamp if file exists
             if (fs.existsSync(targetPath)) {
                 const timestamp = new Date().getTime();
                 const parsed = path.parse(fileName);
                 const newFileName = `${parsed.name}_${timestamp}${parsed.ext}`;
                 fs.renameSync(filePath, path.join(CONFIG.uploadedDir, newFileName));
             } else {
+                // Keep original filename if no conflict
                 fs.renameSync(filePath, targetPath);
             }
         } catch (error) {
