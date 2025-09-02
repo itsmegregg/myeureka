@@ -33,6 +33,7 @@ class ReceiptController extends Controller
                 'si_number' => 'required|string|max:255',
                 'date' => 'required|string|max:20',
                 'branch_name' => 'required|string|max:255',
+                'store_name' => 'nullable|string|max:255',
                 'type' => 'nullable|string|max:255',
                 'file_name' => 'required|string|max:255',
                 'mime_type' => 'nullable|string|max:100',
@@ -68,6 +69,7 @@ class ReceiptController extends Controller
             $siNumber = $request->si_number;
             $date = $request->date;
             $branchName = $request->branch_name;
+            $storeName = $request->store_name;
             $type = $request->type ?? 'general';
 
             if ($isFileUpload) {
@@ -85,6 +87,7 @@ class ReceiptController extends Controller
                     'si_number' => $siNumber,
                     'date' => $date,
                     'branch_name' => $branchName,
+                    'store_name' => $storeName,
                     'type' => $type,
                 ],
                 [
@@ -130,6 +133,7 @@ class ReceiptController extends Controller
         $validator = Validator::make($request->all(), [
             'si_number' => 'required|string|max:255',
             'branch_name' => 'required|string|max:255',
+            'store_name' => 'sometimes|required|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -140,10 +144,14 @@ class ReceiptController extends Controller
         }
 
         try {
-            $receipts = Receipt::where('si_number', $request->si_number)
-                ->where('branch_name', $request->branch_name)
-                ->orderBy('date', 'desc')
-                ->get();
+            $query = Receipt::where('si_number', $request->si_number)
+                ->where('branch_name', $request->branch_name);
+
+            if ($request->has('store_name') && $request->store_name !== 'ALL') {
+                $query->where('store_name', $request->store_name);
+            }
+
+            $receipts = $query->orderBy('date', 'desc')->get();
 
             return response()->json([
                 'data' => $receipts
@@ -191,23 +199,31 @@ class ReceiptController extends Controller
                 list($from, $to) = [$to, $from]; // Swap dates if from > to
             }
 
-            $receipts = Receipt::select([
-                    'id',
-                    'si_number',
-                    'date',
-                    'branch_name',
-                    'file_name',
-                    'mime_type',
-                    'type',
-                    'created_at',
-                    'updated_at'
-                ])
-                ->where('branch_name', $branch)
-                ->whereBetween('date', [$from, $to])
-                ->orderBy('date', 'asc')
+            $query = Receipt::select([
+                'id',
+                'si_number',
+                'date',
+                'branch_name',
+                'file_name',
+                'mime_type',
+                'type',
+                'created_at',
+                'updated_at'
+            ])
+            ->whereBetween('date', [$from, $to]);
+
+            if ($branch !== 'ALL') {
+                $query->where('branch_name', $branch);
+            }
+
+            if ($request->has('store_name') && $request->store_name !== 'ALL') {
+                $query->where('store_name', $request->store_name);
+            }
+
+
+            $receipts = $query->orderBy('date', 'asc')
                 ->orderBy('si_number', 'asc')
                 ->get();
-
             return response()->json([
                 'data' => $receipts
             ]);
@@ -255,11 +271,12 @@ class ReceiptController extends Controller
                 list($from, $to) = [$to, $from]; // Swap dates if from > to
             }
 
-            $receipts = Receipt::select([
+            $query = Receipt::select([
                     'id',
                     'si_number',
                     'date',
                     'branch_name',
+                    'store_name',
                     'file_content',
                     'file_name',
                     'mime_type',
@@ -267,9 +284,17 @@ class ReceiptController extends Controller
                     'created_at',
                     'updated_at'
                 ])
-                ->where('branch_name', $branch)
-                ->whereBetween('date', [$from, $to])
-                ->orderBy('date', 'asc')
+                ->whereBetween('date', [$from, $to]);
+
+            if ($branch !== 'ALL') {
+                $query->where('branch_name', $branch);
+            }
+
+            if ($request->has('store_name') && $request->store_name !== 'ALL') {
+                $query->where('store_name', $request->store_name);
+            }
+
+            $receipts = $query->orderBy('date', 'asc')
                 ->orderBy('si_number', 'asc')
                 ->get();
 
