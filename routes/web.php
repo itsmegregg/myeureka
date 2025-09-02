@@ -2,9 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\CacheController;
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
+
+Route::get('/clear-all-caches', [CacheController::class, 'clearAllCaches']);
 
 Route::get('/', function () {
     return redirect('/dashboard');
@@ -75,4 +78,12 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\ValidateActiveSessio
     Route::get('zread', function () {
         return Inertia::render('zread/index');
     })->name('zread');
+
+    Route::get('order-type', function () {
+        return Inertia::render('orderType/index');
+    })->name('order-type');
+
+    Route::get('time-based', function () {
+        return Inertia::render('timeBased/index');
+    })->name('time-based');
 });

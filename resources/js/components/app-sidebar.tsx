@@ -14,6 +14,7 @@ import {
   Settings,
 
   SquareTerminal,
+  Timer,
   Truck,
   User,
   X,
@@ -141,7 +142,23 @@ const data = {
       url: "/zread",
       icon: NotepadText,
       isActive: false,
-    }
+    },
+    {
+      title: "Order Mix",
+      url: "",   
+      icon: Clipboard,  
+
+    items: [
+      {
+        title: "Order Type",
+        url: "/order-type",
+      },
+      {
+        title: "Time Based",
+        url: "/time-based",
+      },
+    ],
+  },
    
   ],
 
