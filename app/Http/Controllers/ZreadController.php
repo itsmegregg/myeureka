@@ -47,7 +47,7 @@ class ZreadController extends Controller
 
             // Note: zread table has no store_name column; ignore store_name filter
 
-            $zreads = $query->orderBy('date', 'asc')->get();
+            $zreads = $query->orderBy('date', 'asc')->orderBy('branch_name', 'asc')->get();
 
             return response()->json([
                 'message' => 'Zreads fetched successfully',
