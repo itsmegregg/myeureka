@@ -21,75 +21,78 @@ class ReceiptController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-{
-    try {
-        // Log request for debugging
-        \Log::info('Receipt upload attempt', [
-            'has_file' => $request->hasFile('file'),
-            'file_name' => $request->hasFile('file') ? $request->file('file')->getClientOriginalName() : 'none',
-            'branch_name' => $request->branch_name,
-            'type' => $request->type,
-        ]);
-
-        // Handle file upload to public folder (like images)
-        $validator = Validator::make($request->all(), [
-            'file' => [
-                'required',
-                'file',
-                function ($attribute, $value, $fail) {
-                    $extension = strtolower($value->getClientOriginalExtension());
-                    if (!in_array($extension, ['txt', 'log'])) {
-                        $fail('The file must be a TXT or LOG file.');
-                    }
-                },
-                'max:2048'
-            ],
-            'branch_name' => 'nullable|string|max:255',
-            'type' => 'nullable|string|max:255',
-        ]); 
-
-        if ($validator->fails()) {
-            \Log::warning('Receipt validation failed', ['errors' => $validator->errors()]);
-            return response()->json([
-                'message' => 'Validation Error',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Handle file upload to public folder
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
-            
-            \Log::info('Processing file upload', [
-                'original_name' => $file->getClientOriginalName(),
-                'extension' => $file->getClientOriginalExtension(),
-                'size' => $file->getSize()
+    {
+        try {
+            // Log request for debugging
+            \Log::info('Receipt upload attempt', [
+                'has_file' => $request->hasFile('file'),
+                'file_name' => $request->hasFile('file') 
+                    ? $request->file('file')->getClientOriginalName() 
+                    : ($request->file_name ?? 'none'),
+                'branch_name' => $request->branch_name,
+                'type' => $request->type,
             ]);
 
-            // Use original filename
-            $filename = $file->getClientOriginalName();
-            
-            // Ensure public/receipts directory exists
-            $publicPath = public_path('receipts');
-            if (!file_exists($publicPath)) {
-                mkdir($publicPath, 0755, true);
+            $isFileUpload = $request->hasFile('file');
+            $isDirectContent = $request->filled('file_content');
+
+            // Validate request based on upload type
+            $validator = Validator::make($request->all(), [
+                'si_number' => 'required|string|max:255',
+                'date' => 'required|string|max:20',
+                'branch_name' => 'required|string|max:255',
+                'type' => 'nullable|string|max:255',
+                'file_name' => 'required|string|max:255',
+                'mime_type' => 'nullable|string|max:100',
+            ]);
+
+            // Add file validation if it's a file upload
+            if ($isFileUpload) {
+                $validator->addRules([
+                    'file' => [
+                        'required',
+                        'file',
+                        function ($attribute, $value, $fail) {
+                            $extension = strtolower($value->getClientOriginalExtension());
+                            if (!in_array($extension, ['txt', 'log'])) {
+                                $fail('The file must be a TXT or LOG file.');
+                            }
+                        },
+                        'max:2048' // 2MB max
+                    ]
+                ]);
+            } elseif ($isDirectContent) {
+                $validator->addRules([
+                    'file_content' => 'required|string',
+                ]);
+            } else {
+                $validator->errors()->add('file', 'Either a file or file_content must be provided.');
             }
 
-            // Move file to public/receipts to be directly web-accessible
-            $file->move($publicPath, $filename);
-            $path = 'receipts/' . $filename;
-            
-            \Log::info('File stored successfully', ['path' => $path]);
+            if ($validator->fails()) {
+                \Log::warning('Receipt validation failed', ['errors' => $validator->errors()]);
+                return response()->json([
+                    'message' => 'Validation Error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
-            // Parse filename components
-            // Format: SI_NUMBER - DATE - BRANCH_NAME.TXT
-            $filenameParts = pathinfo($filename, PATHINFO_FILENAME);
-            $parts = explode(' - ', $filenameParts);
-            
-            $siNumber = $parts[0] ?? '';
-            $date = $parts[1] ?? '';
-            $branchName = $parts[2] ?? '';
+            $fileContent = '';
+            $filename = $request->file_name;
+            $mimeType = $request->mime_type ?: 'text/plain';
+            $siNumber = $request->si_number;
+            $date = $request->date;
+            $branchName = $request->branch_name;
             $type = $request->type ?? 'general';
+
+            if ($isFileUpload) {
+                $file = $request->file('file');
+                $fileContent = file_get_contents($file->getRealPath());
+                $filename = $file->getClientOriginalName();
+                $mimeType = $file->getMimeType();
+            } else {
+                $fileContent = $request->file_content;
+            }
 
             // Upsert receipt record by unique keys (si_number, date, branch_name, type)
             $attributes = [
@@ -100,7 +103,9 @@ class ReceiptController extends Controller
             ];
 
             $values = [
-                'file_path' => $path,
+                'file_name' => $filename,
+                'file_content' => $fileContent,
+                'mime_type' => $mimeType,
             ] + $attributes;
 
             $receipt = Receipt::updateOrCreate($attributes, $values);
@@ -116,9 +121,8 @@ class ReceiptController extends Controller
                 'created' => (bool) $receipt->wasRecentlyCreated,
                 'updated' => !$receipt->wasRecentlyCreated,
                 'data' => $receipt,
-                'file_url' => asset($path)
+                'file_name' => $filename
             ], $receipt->wasRecentlyCreated ? 201 : 200);
-        }
 
     } catch (\Exception $e) {
         \Log::error('Receipt upload error', [
@@ -209,7 +213,18 @@ class ReceiptController extends Controller
             }
 
             // Build query; if branch is 'ALL', skip branch filter
-            $query = Receipt::query();
+            $query = Receipt::select([
+                'id',
+                'si_number',
+                'date',
+                'branch_name',
+                'file_name',
+                'mime_type',
+                'type',
+                'created_at',
+                'updated_at'
+            ]);
+            
             if (strtoupper(trim($branch)) !== 'ALL') {
                 $query->where('branch_name', $branch);
             }
@@ -260,7 +275,19 @@ class ReceiptController extends Controller
             $to = $request->to_date;
             if ($from > $to) { [$from, $to] = [$to, $from]; }
 
-            $receipts = Receipt::where('branch_name', $branch)
+            $receipts = Receipt::select([
+                    'id',
+                    'si_number',
+                    'date',
+                    'branch_name',
+                    'file_content',
+                    'file_name',
+                    'mime_type',
+                    'type',
+                    'created_at',
+                    'updated_at'
+                ])
+                ->where('branch_name', $branch)
                 ->whereBetween('date', [$from, $to])
                 ->orderBy('date', 'asc')
                 ->orderBy('si_number', 'asc')
@@ -276,16 +303,11 @@ class ReceiptController extends Controller
             $lines = [];
             $separator = str_repeat('=', 80);
             foreach ($receipts as $r) {
-                $fullPath = public_path($r->file_path);
                 $header = $separator."\n".
                           "SI: {$r->si_number} | Branch: {$r->branch_name} | Date: {$r->date} | Type: ".($r->type ?? 'general')."\n".
                           $separator."\n";
-                if (file_exists($fullPath)) {
-                    $content = @file_get_contents($fullPath);
-                    if ($content === false) { $content = "[ERROR] Unable to read file: {$r->file_path}\n"; }
-                } else {
-                    $content = "[MISSING] File not found: {$r->file_path}\n";
-                }
+                
+                $content = $r->file_content ?? "[ERROR] No content available for this receipt\n";
                 $lines[] = $header.$content."\n\n";
             }
 

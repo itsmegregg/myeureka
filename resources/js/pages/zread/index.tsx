@@ -18,23 +18,19 @@ interface ZreadItem {
   date: string; // YYYY-MM-DD
   branch_name: string;
   file_path: string;
+  file_content: string;
+  file_name: string;
+  mime_type: string;
   created_at: string;
   updated_at: string;
 }
 
-async function downloadPdf(path: string, filename: string) {
+async function downloadPdf(item: ZreadItem, filename: string) {
   try {
-    const response = await fetch(viewUrl(path));
-    if (!response.ok) {
-      alert("Zread file not found.");
+    const text = item.file_content;
+    if (!text) {
+      alert("File content not available.");
       return;
-    }
-    const contentType = response.headers.get("content-type") || "";
-    let text = "";
-    if (contentType.includes("text")) {
-      text = await response.text();
-    } else {
-      text = `[File: ${path}]\n\nThis file is not text-based. Content preview is unavailable.`;
     }
 
     // Dynamically import jsPDF to avoid bundling if unused
@@ -79,34 +75,25 @@ function toYyyyDashMmDashDd(d: Date) {
   return formatDate(d, "yyyy-MM-dd");
 }
 
-function viewUrl(path: string) {
-  return `/${path}`; // served from public/
-}
+// No longer needed as we store content in the database
+// function viewUrl(path: string) {
+//   return `/${path}`; // served from public/
+// }
 
-async function downloadTxt(path: string, filename: string) {
+async function downloadTxt(item: ZreadItem) {
   try {
-    const response = await fetch(viewUrl(path));
-    if (!response.ok) {
-      alert("Zread file not found.");
-      return;
-    }
-    const contentType = response.headers.get("content-type");
-    let fileContent: string;
-    if (contentType && contentType.includes("text")) fileContent = await response.text();
-    else fileContent = `[File: ${path}]\n\nThis file is not text-based.`;
-
-    const blob = new Blob([fileContent], { type: "text/plain" });
+    const blob = new Blob([item.file_content], { type: item.mime_type || 'text/plain' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
-    a.download = `${filename}.txt`;
+    a.download = item.file_name || `zread-${item.branch_name}-${item.date}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } catch (error) {
-    console.error("Error downloading file:", error);
-    alert("Error downloading zread file.");
+    console.error('Error downloading file:', error);
+    alert('Error downloading zread file.');
   }
 }
 
@@ -133,50 +120,31 @@ export default function ZreadIndex() {
   async function openViewer(item: ZreadItem) {
     setViewerTitle(`Z-Read: ${item.branch_name} — ${item.date}`);
     setViewerOpen(true);
-    setViewerLoading(true);
-    setViewerText("");
+    setViewerLoading(false);
+    setViewerText(item.file_content || "No content available");
     setViewerUrl(null);
-
-    try {
-      const res = await fetch(viewUrl(item.file_path));
-      if (!res.ok) throw new Error("Zread file not found");
-      const type = res.headers.get("content-type") || "";
-      if (type.includes("text")) {
-        const txt = await res.text();
-        setViewerIsText(true);
-        setViewerText(txt);
-      } else {
-        setViewerIsText(false);
-        setViewerUrl(viewUrl(item.file_path));
-      }
-    } catch (e) {
-      setViewerIsText(true);
-      setViewerText("Unable to load preview.");
-    } finally {
-      setViewerLoading(false);
-    }
   }
 
   const searchByDateRange = async () => {
-
-
     setLoading(true);
     setError("");
     setZreads([]);
     try {
-
+      // Format dates to YYYY-MM-DD with proper type safety
+      const formatDate = (date: Date | string): string => {
+        const d = new Date(date);
+        return d.toISOString().split('T')[0];
+      };
+      
       const params = {
         branch_name: selectedBranch?.branch_name ?? 'ALL',
-        from_date: selectedDateRange.from,
-        to_date: selectedDateRange.to,
+        from_date: selectedDateRange.from ? formatDate(selectedDateRange.from) : '',
+        to_date: selectedDateRange.to ? formatDate(selectedDateRange.to) : formatDate(new Date()),
         store_name: selectedStore ?? 'ALL',
       };
 
       console.log('[ZREAD] Request params:', params);
-
       const response = await axios.get("/api/zreadDateRange", { params });
-
-
 
       const items: ZreadItem[] = response.data?.data || [];
       setZreads(items);
@@ -219,7 +187,6 @@ export default function ZreadIndex() {
                   {zreads.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {zreads.map((z) => {
-                        const href = viewUrl(z.file_path);
                         const baseName = `zread-${z.branch_name}-${z.date}`;
                         return (
                           <div key={z.id} className="border rounded-md p-4 bg-background">
@@ -231,16 +198,16 @@ export default function ZreadIndex() {
                                   <span className="text-muted-foreground">Date</span>
                                   <span className="font-medium">{z.date}</span>
                                 </div>
-                                <div className="text-xs text-muted-foreground break-all">{z.file_path}</div>
+                                <div className="text-xs text-muted-foreground break-all">{z.file_name || 'No file name available'}</div>
                               </div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <Button variant="outline" size="sm" onClick={() => openViewer(z)}>
                                   <Eye className="size-4 mr-2" /> View
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => downloadTxt(z.file_path, baseName)}>
+                                <Button variant="ghost" size="sm" onClick={() => downloadTxt(z)}>
                                   TXT <FileText className="size-4 ml-2" />
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => downloadPdf(z.file_path, baseName)}>
+                                <Button variant="ghost" size="sm" onClick={() => downloadPdf(z, baseName)}>
                                   PDF <FileIcon className="size-4 ml-2" />
                                 </Button>
                               </div>

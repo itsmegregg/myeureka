@@ -113,6 +113,7 @@ Route::post('/receipts/download-consolidated', [App\Http\Controllers\API\Receipt
 
 //zread data
 Route::get('/zreadDateRange', [App\Http\Controllers\ZreadController::class, 'searchByDateRange']);
+
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth:sanctum');
 

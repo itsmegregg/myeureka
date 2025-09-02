@@ -11,6 +11,9 @@ class Zread extends Model
         'date',
         'branch_name',
         'file_path',
+        'file_content',
+        'file_name',
+        'mime_type',
     ];
 
     protected $casts = [

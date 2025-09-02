@@ -14,7 +14,10 @@ class Receipt extends Model
 
     protected $fillable = [
         'si_number',
-        'file_path',
+        'file_path', // Will be removed in a future migration
+        'file_content',
+        'file_name',
+        'mime_type',
         'date',
         'branch_name',
         'type',
@@ -22,7 +25,21 @@ class Receipt extends Model
 
     protected $casts = [
         'file_path' => 'string',
+        'date' => 'date:Y-m-d',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
+    
+    /**
+     * Get the file content as a string
+     */
+    public function getFileContentAttribute($value)
+    {
+        if (is_resource($value)) {
+            return stream_get_contents($value);
+        }
+        return $value;
+    }
 
     public function branch(): BelongsTo
     {

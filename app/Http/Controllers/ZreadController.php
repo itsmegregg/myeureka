@@ -18,10 +18,12 @@ class ZreadController extends Controller
     public function searchByDateRange(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'branch_name' => 'nullable|string',
-            'store_name' => 'nullable|string',
-            'from_date' => 'required|date',
-            'to_date' => 'required|date'
+            'branch_name' => 'nullable|string|max:255',
+            'search_term' => 'nullable|string|max:255',
+            'from_date' => 'required|date_format:Y-m-d',
+            'to_date' => 'required|date_format:Y-m-d',
+            'per_page' => 'sometimes|integer|min:1|max:100',
+            'page' => 'sometimes|integer|min:1'
         ]);
 
         if ($validator->fails()) {
@@ -35,23 +37,54 @@ class ZreadController extends Controller
             $from = $request->from_date;
             $to = $request->to_date;
 
-            if ($from > $to) { [$from, $to] = [$to, $from]; }
-
-            // Build query first; only apply filters when not ALL
-            $query = Zread::query()
-                ->whereBetween('date', [$from, $to]);
-
-            if ($request->filled('branch_name') && strtoupper($request->branch_name) !== 'ALL') {
-                $query->where('branch_name', trim($request->branch_name));
+            // Swap dates if from_date is after to_date
+            if (strtotime($from) > strtotime($to)) {
+                [$from, $to] = [$to, $from];
             }
 
-            // Note: zread table has no store_name column; ignore store_name filter
+            $query = Zread::query()
+                ->whereBetween('date', [$from, $to])
+                ->select([
+                    'id',
+                    'date',
+                    'branch_name',
+                    'file_name',
+                    'file_content',
+                    'mime_type',
+                    'created_at',
+                    'updated_at'
+                ]);
 
-            $zreads = $query->orderBy('date', 'asc')->orderBy('branch_name', 'asc')->get();
+            // Case-insensitive branch name search
+            if ($request->filled('branch_name') && strtoupper($request->branch_name) !== 'ALL') {
+                $branchName = trim($request->branch_name);
+                $query->where('branch_name', 'ilike', "%{$branchName}%");
+            }
+
+            // Search within file content if search term provided
+            if ($request->filled('search_term')) {
+                $searchTerm = '%' . $request->search_term . '%';
+                $query->where(function($q) use ($searchTerm) {
+                    $q->where('file_name', 'ilike', $searchTerm)
+                      ->orWhere('file_content', 'ilike', $searchTerm);
+                });
+            }
+
+            // Paginate results
+            $perPage = $request->input('per_page', 15);
+            $zreads = $query->orderBy('date', 'desc')
+                          ->orderBy('branch_name', 'asc')
+                          ->paginate($perPage);
 
             return response()->json([
                 'message' => 'Zreads fetched successfully',
-                'data' => $zreads,
+                'data' => $zreads->items(),
+                'pagination' => [
+                    'total' => $zreads->total(),
+                    'per_page' => $zreads->perPage(),
+                    'current_page' => $zreads->currentPage(),
+                    'last_page' => $zreads->lastPage(),
+                ]
             ], 200);
         } catch (\Exception $e) {
             \Log::error('Zread date-range search error', [ 'error' => $e->getMessage() ]);

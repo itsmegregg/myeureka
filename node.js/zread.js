@@ -2,15 +2,16 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const FormData = require('form-data');
 const apiUrl = require('../apiUrl');
 
 // Configuration
 const CONFIG = {
-    sourceDir: 'D:\\RMS\\RECEIPT',
-    uploadedDir: 'D:\\RMS\\RECEIPT\\UploadedFiles',
-    apiUrl: apiUrl.apiUrl + '/receipt',
-    filePattern: /.*\.TXT$/i,
-    timeout: 30000
+    sourceDir: 'D:\\RMS\\ZREAD', // Directory for ZREAD files
+    uploadedDir: 'D:\\RMS\\ZREAD\\UploadedFiles',
+    apiUrl: apiUrl.apiUrl + '/zread',
+    filePattern: /.*\.TXT$/i, // Pattern for all .TXT files
+    timeout: 30000 // 30 seconds timeout
 };
 
 // Console colors
@@ -40,19 +41,20 @@ async function processFile(filePath) {
 
     try {
         // Parse filename components
-        const filenameWithoutExt = fileName.replace(/\.txt$/i, '');
-        const parts = filenameWithoutExt.split(' - ').map(part => part.trim());
+        // Format: YYYYMMDD - BRANCH_NAME_YYYY-MM-DD.TXT
+        const baseName = fileName.replace(/\.TXT$/i, '');
+        const [datePart, branchPart] = baseName.split(' - ');
         
-        const date = parts[1] || '';
-        const branchName = parts[2] || '';
-        
-        // Prepare request data
+        // Extract branch name by removing the _YYYY-MM-DD suffix
+        const branchName = branchPart ? branchPart.replace(/\_\d{4}\-\d{2}\-\d{2}$/, '') : '';
+        const date = datePart || '';
+
+        // Read file content and prepare request data
+        const fileContent = fs.readFileSync(filePath, 'utf8');
         const requestData = {
-            si_number: parts[0] || '',
-            date: date,
+            date: date.replace(/-/g, ''), // Format date as YYYYMMDD
             branch_name: branchName,
-            type: parts[3] || 'SALES',
-            file_content: fs.readFileSync(filePath, 'utf8'),
+            file_content: fileContent,
             file_name: fileName,
             mime_type: 'text/plain'
         };
@@ -64,8 +66,8 @@ async function processFile(filePath) {
                 'Accept': 'application/json'
             }
         });
-
-        log(`RECEIPT ${date}-${branchName} Successfully uploaded.`, 'green');
+        
+        log(`ZREAD ${date}-${branchName} Successfully uploaded.`, 'green');
         success = true;
     } catch (error) {
         log(`Failed to process ${fileName}`, 'red');
@@ -91,7 +93,6 @@ async function processFile(filePath) {
             log(`Error moving file: ${error.message}`, 'yellow');
         }
     }
-    
     return success;
 }
 
@@ -103,7 +104,7 @@ const txtFiles = filesInDir.filter(entry => {
 });
 
 if (txtFiles.length === 0) {
-    log('No receipt files found to process', 'yellow');
+    log('No ZREAD files found to process', 'yellow');
     process.exit(0);
 }
 
@@ -116,7 +117,7 @@ if (txtFiles.length === 0) {
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-    log('Fatal error:', 'red');
+    colorLog('Fatal error:', 'red');
     console.error(error);
     process.exit(1);
 });

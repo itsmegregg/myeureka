@@ -57,18 +57,6 @@ class ZreadController extends Controller
                 // Use original filename
                 $filename = $file->getClientOriginalName();
 
-                // Ensure public/zreads directory exists
-                $publicPath = public_path('zreads');
-                if (!file_exists($publicPath)) {
-                    mkdir($publicPath, 0755, true);
-                }
-
-                // Move file to public/zreads to be directly web-accessible
-                $file->move($publicPath, $filename);
-                $path = 'zreads/' . $filename;
-
-                \Log::info('Zread file stored successfully', ['path' => $path]);
-
                 // Parse filename components
                 // Expected Format: DATE - BRANCH_NAME.TXT (DATE as string e.g., YYYYMMDD)
                 $filenameParts = pathinfo($filename, PATHINFO_FILENAME);
@@ -96,15 +84,22 @@ class ZreadController extends Controller
                     ], 422);
                 }
 
+                // Read file content
+                $fileContent = file_get_contents($file->getRealPath());
+
                 // Upsert zread record by unique keys (date, branch_name)
                 $attributes = [
                     'date' => $date,
                     'branch_name' => $branchName,
                 ];
 
-                $values = $attributes + [
-                    'file_path' => $path,
+                $values = [
+                    'file_name' => $filename,
+                    'file_content' => $fileContent,
+                    'mime_type' => $file->getMimeType(),
                 ];
+
+                // No file system operations needed - we store everything in the database
 
                 $zread = Zread::updateOrCreate($attributes, $values);
 
@@ -113,11 +108,9 @@ class ZreadController extends Controller
                     'created' => $zread->wasRecentlyCreated,
                 ]);
 
-                // Build response payload per requested format
-                $fullPath = public_path($path);
-                $fileContent = file_exists($fullPath) ? @file_get_contents($fullPath) : '';
-                $base64 = $fileContent !== false ? base64_encode($fileContent) : '';
+                // Build response payload
                 $dateOut = str_replace('-', '', $date); // ensure YYYYMMDD
+                $base64 = base64_encode($fileContent);
 
                 return response()->json([
                     'date' => $dateOut,
