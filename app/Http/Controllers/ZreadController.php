@@ -70,21 +70,14 @@ class ZreadController extends Controller
                 });
             }
 
-            // Paginate results
-            $perPage = $request->input('per_page', 15);
-            $zreads = $query->orderBy('date', 'desc')
+            // Get all results, sorted by date ascending
+            $zreads = $query->orderBy('date', 'asc')
                           ->orderBy('branch_name', 'asc')
-                          ->paginate($perPage);
+                          ->get();
 
             return response()->json([
                 'message' => 'Zreads fetched successfully',
-                'data' => $zreads->items(),
-                'pagination' => [
-                    'total' => $zreads->total(),
-                    'per_page' => $zreads->perPage(),
-                    'current_page' => $zreads->currentPage(),
-                    'last_page' => $zreads->lastPage(),
-                ]
+                'data' => $zreads,
             ], 200);
         } catch (\Exception $e) {
             \Log::error('Zread date-range search error', [ 'error' => $e->getMessage() ]);
