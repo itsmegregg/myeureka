@@ -93,8 +93,8 @@ class UpdateBirDetailedTable extends Command
                     COALESCE(tis.total_item_net_sales, 0),
                     pts.combined_payment_types,
                     CAST(h.net_amount AS NUMERIC(10, 2)),
-                    CAST(COALESCE(h.service_charge, 0) AS NUMERIC(10, 2)),
-                    CAST(COALESCE(h.delivery_charge, 0) AS NUMERIC(10, 2))
+                    CAST(COALESCE(CAST(h.service_charge AS NUMERIC), 0) AS NUMERIC(10, 2)),
+                    CAST(COALESCE(CAST(h.delivery_charge AS NUMERIC), 0) AS NUMERIC(10, 2))
                 FROM header as h
                 LEFT JOIN (
                     SELECT
@@ -258,8 +258,8 @@ class UpdateBirDetailedTable extends Command
                         COALESCE(tis.total_item_net_sales, 0),
                         pts.combined_payment_types,
                         CAST(h.net_amount AS NUMERIC(10, 2)),
-                        CAST(COALESCE(h.service_charge, 0) AS NUMERIC(10, 2)),
-                        CAST(COALESCE(h.delivery_charge, 0) AS NUMERIC(10, 2))
+                        CAST(COALESCE(CAST(h.service_charge AS NUMERIC), 0) AS NUMERIC(10, 2)),
+                        CAST(COALESCE(CAST(h.delivery_charge AS NUMERIC), 0) AS NUMERIC(10, 2))
                     FROM header as h
                     LEFT JOIN (
                         SELECT
