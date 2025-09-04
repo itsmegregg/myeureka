@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Zread;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class ZreadController extends Controller
@@ -26,6 +27,9 @@ class ZreadController extends Controller
             'page' => 'sometimes|integer|min:1'
         ]);
 
+            
+        
+
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation Error',
@@ -36,6 +40,7 @@ class ZreadController extends Controller
         try {
             $from = $request->from_date;
             $to = $request->to_date;
+
 
             // Swap dates if from_date is after to_date
             if (strtotime($from) > strtotime($to)) {
@@ -75,10 +80,27 @@ class ZreadController extends Controller
                           ->orderBy('branch_name', 'asc')
                           ->get();
 
-            return response()->json([
+            $response = [
                 'message' => 'Zreads fetched successfully',
                 'data' => $zreads,
-            ], 200);
+            ];
+
+            if ($from === $to) {
+                // Get all branch names from the branches table
+                $allBranches = DB::table('branches')->pluck('branch_name');
+
+                // Get branch names that have Z-read data for the given date
+                $branchesWithData = Zread::where('date', $from)->distinct()->pluck('branch_name');
+
+                // Determine which branches do not have data
+                $branchesWithoutData = $allBranches->diff($branchesWithData);
+
+                $response['branch_count'] = $allBranches->count();
+                $response['branch_count_that_have_a_date_result_of_zread'] = $branchesWithData->count();
+                $response['branches_without_data'] = $branchesWithoutData->values()->all();
+            }
+
+            return response()->json($response, 200);
         } catch (\Exception $e) {
             \Log::error('Zread date-range search error', [ 'error' => $e->getMessage() ]);
             return response()->json([

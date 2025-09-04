@@ -8,10 +8,12 @@ import { useState } from "react";
 import { useBranchStore } from "@/store/useBranch";
 import { useDateRange } from "@/store/useDateRange";
 import axios from "axios";
-import { Eye, FileText, File as FileIcon, Search } from "lucide-react";
+import { Eye, FileText, File as FileIcon, Search, Info } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format as formatDate } from "date-fns";
 import { useStore } from "@/store/useStore";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface ZreadItem {
   id: number;
@@ -23,6 +25,12 @@ interface ZreadItem {
   mime_type: string;
   created_at: string;
   updated_at: string;
+}
+
+interface ZReadSummary {
+  branch_count: number;
+  branch_count_that_have_a_date_result_of_zread: number;
+  branches_without_data: string[];
 }
 
 async function downloadPdf(item: ZreadItem, filename: string) {
@@ -101,6 +109,7 @@ export default function ZreadIndex() {
   const [zreads, setZreads] = useState<ZreadItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [summary, setSummary] = useState<ZReadSummary | null>(null);
   const { dateRange: selectedDateRange } = useDateRange();
   const { dateRange } = useDateRange();
 
@@ -128,6 +137,7 @@ export default function ZreadIndex() {
   const searchByDateRange = async () => {
     setLoading(true);
     setError("");
+    setSummary(null); // Reset summary on new search
     setZreads([]);
     try {
       // Format dates to YYYY-MM-DD with proper type safety
@@ -148,11 +158,22 @@ export default function ZreadIndex() {
 
       const items: ZreadItem[] = response.data?.data || [];
       setZreads(items);
+      if (response.data.branches_without_data) {
+        setSummary({
+          branch_count: response.data.branch_count,
+          branch_count_that_have_a_date_result_of_zread: response.data.branch_count_that_have_a_date_result_of_zread,
+          branches_without_data: response.data.branches_without_data,
+        });
+      } else {
+        setSummary(null);
+      }
+      setError("");
       if (!items.length) setError("No zreads found for the selected range.");
     } catch (err: any) {
       console.error("Zread search error", err);
       setError(err.response?.data?.message || "Unable to fetch zreads by date");
       setZreads([]);
+      setSummary(null); // Also reset summary on error
     } finally {
       setLoading(false);
     }
@@ -177,7 +198,35 @@ export default function ZreadIndex() {
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* export buttons placeholder */}
+                   {summary && summary.branches_without_data.length > 0 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="icon" className="relative mx-2">
+                          <Info />
+                          <Badge variant="destructive" className="absolute -top-1 -right-1 h-4 w-4 shrink-0 items-center justify-center rounded-full p-1 text-xs">
+                            {summary.branches_without_data.length}
+                          </Badge>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80">
+                        <div className="grid gap-4">
+                          <div className="space-y-2">
+                            <h4 className="font-medium leading-none">Missing Z-Reads</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {summary.branches_without_data.length} branch(es) have not submitted a Z-read for the selected date.
+                            </p>
+                          </div>
+                          <div className="grid gap-2 max-h-48 overflow-y-auto">
+                            {summary.branches_without_data.map((branch, index) => (
+                              <div key={index} className="text-sm font-mono p-2 bg-muted rounded-md">
+                                {branch}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
                   </div>
                 </div>
 

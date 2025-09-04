@@ -61,7 +61,7 @@ export default function OrderType() {
     const [isAlertOpen, setIsAlertOpen] = useState(false);
 
     const handleBarGraphClick = () => {
-        if (!merge) {
+        if (merge) {
             setIsAlertOpen(true);
         } else if (data.length > 0) {
             setIsBarGraphOpen(true);
@@ -69,7 +69,7 @@ export default function OrderType() {
     };
 
     const handlePieGraphClick = () => {
-        if (!merge) {
+        if (merge) {
             setIsAlertOpen(true);
         } else if (data.length > 0) {
             setIsPieGraphOpen(true);
