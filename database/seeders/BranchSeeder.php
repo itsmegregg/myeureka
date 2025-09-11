@@ -23,8 +23,8 @@ class BranchSeeder extends Seeder
        
             [
                 'store_name' => $storeName, 
-                'branch_name' => 'SM Megamall',
-                'branch_description' => 'SM Megamall',
+                'branch_name' => 'MYEUREKA PH OPC',
+                'branch_description' => 'MYEUREKA PH OPC',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

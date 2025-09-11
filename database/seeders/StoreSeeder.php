@@ -14,11 +14,11 @@ class StoreSeeder extends Seeder
     {
         DB::table('stores')->insert([
             [
-                'id' => 1,
-                'store_name' => 'My Eureka',
-                'store_description' => 'My Eureka Store',
-                'store_email' => 'eureka@eureka.com',
-                'store_logo' => 'eureka.png',
+                'id' => 100,
+                'store_name' => 'MYEUREKA PH OPC',
+                'store_description' => 'MYEUREKA PH OPC',
+                'store_email' => 'myeureka@myeureka.com',
+                'store_logo' => 'myeureka.png',
                 'active' => 'yes',
                 'created_at' => now(),
                 'updated_at' => now(),

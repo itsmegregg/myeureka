@@ -39,6 +39,7 @@ class ItemDetailsController extends Controller
         'combo_header' => 'nullable|string',
         'void_flag' => 'required|string',
         'void_amount' => 'nullable|string',
+        'line_number' => 'required|integer',
     ]);
 
     try {
@@ -81,6 +82,7 @@ class ItemDetailsController extends Controller
             ->where('combo_header', $validatedData['combo_header'])
             ->where('store_name', $validatedData['store_name'])
             ->where('product_code', $validatedData['product_code'])
+            ->where('line_number', $validatedData['line_number'])
             ->first();
 
         if ($existingRecord) {

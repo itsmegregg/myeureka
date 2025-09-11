@@ -23,7 +23,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('123456789'),
                 'created_at' => now(),
                 'updated_at' => now(),
-                'store_name' => 'My Eureka',
+                'store_name' => 'MYEUREKA PH OPC',
                
             ],
             [
@@ -33,7 +33,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('123456789'),
                 'created_at' => now(),
                 'updated_at' => now(),
-                'store_name' => 'My Eureka',
+                'store_name' => 'MYEUREKA PH OPC',
             ]
         ]);
     }

@@ -27,6 +27,7 @@ class ItemDetail extends Model
         'void_amount',
         'branch_name',
         'store_name',
+        'line_number',
     ];
 
     protected $casts = [
