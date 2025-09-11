@@ -15,10 +15,10 @@ class StoreSeeder extends Seeder
         DB::table('stores')->insert([
             [
                 'id' => 1,
-                'store_name' => 'RAMEN KURODA',
-                'store_description' => 'Ramen Kuroda Store',
-                'store_email' => 'ramen@ramen.com',
-                'store_logo' => 'ramen.png',
+                'store_name' => 'My Eureka',
+                'store_description' => 'My Eureka Store',
+                'store_email' => 'eureka@eureka.com',
+                'store_logo' => 'eureka.png',
                 'active' => 'yes',
                 'created_at' => now(),
                 'updated_at' => now(),

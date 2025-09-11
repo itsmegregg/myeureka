@@ -23,8 +23,17 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('123456789'),
                 'created_at' => now(),
                 'updated_at' => now(),
-                'store_name' => 'RAMEN KURODA',
+                'store_name' => 'My Eureka',
                
+            ],
+            [
+                'id' => 2,
+                'name' => 'Jon Villanueva',
+                'email' => 'jon@jon.com',
+                'password' => Hash::make('123456789'),
+                'created_at' => now(),
+                'updated_at' => now(),
+                'store_name' => 'My Eureka',
             ]
         ]);
     }

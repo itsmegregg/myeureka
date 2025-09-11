@@ -22,27 +22,13 @@ class BranchSeeder extends Seeder
         DB::table('branches')->insert([
        
             [
-                'store_name' => 'RAMEN KURODA', 
-                'branch_name' => 'TRINOMA',
-                'branch_description' => 'TRINOMA',
+                'store_name' => $storeName, 
+                'branch_name' => 'SM Megamall',
+                'branch_description' => 'SM Megamall',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
-            [
-                'store_name' => 'RAMEN KURODA', 
-                'branch_name' => 'CLOVERLEAF',
-                'branch_description' => 'CLOVERLEAF',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'store_name' => 'RAMEN KURODA', 
-                'branch_name' => 'DOUBLE DRAGON',
-                'branch_description' => 'DOUBLE DRAGON',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-          
+         
           
         ]); 
     }
