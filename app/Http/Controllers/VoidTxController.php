@@ -79,8 +79,10 @@ class VoidTxController extends Controller
                     'h.approved_by',
                     'h.void_reason'
                 )
+                ->orderBy('h.branch_name')
                 ->orderBy('h.date')
                 ->orderBy('h.time')
+         
                 ->orderBy('h.si_number')
                 ->get();
     

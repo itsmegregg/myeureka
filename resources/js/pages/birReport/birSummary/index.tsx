@@ -129,6 +129,102 @@ export default function BirSummary() {
             
             // Create Excel sheet with ordered data
             const ws = XLSX.utils.json_to_sheet(formattedData);
+            
+            // Define number and decimal fields for proper formatting
+            const wholeNumberFields = [
+                'Z Counter',
+                'SI First',
+                'SI Last',
+                'Beginning',
+                'Ending',
+                'Total No of Guest',
+                'Returns',
+                'Voids'
+            ];
+            
+            const decimalFields = [
+                'Net Amount',
+                'Service charge',
+                'Gross',
+                'Vatable',
+                'VAT Amount',
+                'VAT Exempt',
+                'Zero Rated',
+                'Less VAT'
+            ];
+            
+            // Apply number formatting to cells
+            const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+            const columnHeaders = Object.keys(formattedData[0] || {});
+            
+            for (let R = range.s.r; R <= range.e.r; R++) {
+                for (let C = range.s.c; C <= range.e.c; C++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                    const cell = ws[cellAddress];
+                    
+                    if (!cell || cell.v === null || cell.v === undefined) continue;
+                    
+                    const header = columnHeaders[C];
+                    const value = cell.v;
+                    
+                    // Skip header row
+                    if (R === 0) continue;
+                    
+                    // Format whole numbers (integers)
+                    if (wholeNumberFields.includes(header)) {
+                        const numValue = parseInt(value, 10);
+                        if (!isNaN(numValue)) {
+                            cell.t = 'n';
+                            cell.v = numValue;
+                        }
+                    }
+                    // Format decimal numbers
+                    else if (decimalFields.includes(header)) {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                            cell.t = 'n';
+                            cell.v = numValue;
+                            cell.z = '#,##0.00'; // Format with 2 decimal places
+                        }
+                    }
+                    // Handle date columns
+                    else if (header === 'Date' && typeof value === 'string') {
+                        // Format date as YYYY-MM-DD
+                        const dateValue = new Date(value);
+                        if (!isNaN(dateValue.getTime())) {
+                            cell.t = 'd';
+                            cell.v = dateValue;
+                            cell.z = 'yyyy-mm-dd';
+                        }
+                    }
+                    // Handle discount columns (dynamic fields)
+                    else if (header && typeof value === 'string' && !isNaN(parseFloat(value))) {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                            cell.t = 'n';
+                            cell.v = numValue;
+                            cell.z = '#,##0.00'; // Format as decimal for discount amounts
+                        }
+                    }
+                }
+            }
+            
+            // Auto-fit column widths
+            const colWidths = [];
+            for (let C = range.s.c; C <= range.e.c; C++) {
+                let maxWidth = 10;
+                for (let R = range.s.r; R <= range.e.r; R++) {
+                    const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                    const cell = ws[cellAddress];
+                    if (cell && cell.v) {
+                        const width = String(cell.v).length + 2;
+                        maxWidth = Math.max(maxWidth, width);
+                    }
+                }
+                colWidths.push({ wch: Math.min(maxWidth, 50) });
+            }
+            ws['!cols'] = colWidths;
+            
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "BIR Summary Report");
             
