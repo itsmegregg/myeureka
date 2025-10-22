@@ -68,12 +68,12 @@ class DiscountController extends Controller
                     DB::raw('SUM(CAST(item_details.discount_amount AS NUMERIC)) as total_discount')
                 )
                 ->when($request->filled('terminal_number') && strtoupper($request->terminal_number) !== 'ALL', function ($query) use ($request) {
-                    $query->where('header.terminal_number', $request->terminal_number);
+                    $query->whereRaw('UPPER(header.terminal_number) = ?', [strtoupper($request->terminal_number)]);
                 })
                 ->join('header', function ($join) {
-                    $join->on('item_details.si_number', '=', 'header.si_number')
-                         ->on('item_details.terminal_number', '=', 'header.terminal_number')
-                         ->on('item_details.branch_name', '=', 'header.branch_name');
+                    $join->on('item_details.terminal_number', '=', 'header.terminal_number')
+                         ->on('item_details.branch_name', '=', 'header.branch_name')
+                         ->on(DB::raw('CAST(item_details.si_number AS BIGINT)'), '=', DB::raw('CAST(header.si_number AS BIGINT)'));
                 })
                 ->whereNotNull('item_details.discount_code') // Exclude NULL discount codes
                 ->whereRaw("COALESCE(item_details.void_flag, '0') = '0'");
@@ -87,12 +87,12 @@ class DiscountController extends Controller
 
             // Filter by store if provided and not 'all'
             if ($request->filled('store_name') && strtoupper($request->store_name) !== 'ALL') {
-                $query->where('header.store_name', $request->store_name);
+                $query->whereRaw('UPPER(header.store_name) = ?', [strtoupper($request->store_name)]);
             }
 
             // Filter by branch if provided and not 'all'
             if ($request->filled('branch_name') && strtoupper($request->branch_name) !== 'ALL') {
-                $query->where('header.branch_name', $request->branch_name);
+                $query->whereRaw('UPPER(header.branch_name) = ?', [strtoupper($request->branch_name)]);
             }
 
             // Add proper grouping and ordering

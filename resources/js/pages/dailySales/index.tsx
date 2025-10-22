@@ -34,6 +34,7 @@ interface GrandTotals {
     Solo_Parent_Discount: number;
     Valor_Discount: number;
     Other_Discounts: number;
+    less_vat: number; // Add this line
 }
 
 // Define the type for daily sales data
@@ -59,7 +60,9 @@ interface DailySalesData {
     Valor_Discount: number;
     Other_Discounts: number;
     z_read_counter: number;
+    less_vat: number; // Add this line
 }
+
 
 // Define the type for the API response
 interface DailySalesApiResponse {
@@ -82,9 +85,19 @@ export default function DailySalesIndex() {
     const { dateRange: selectedDateRange } = useDateRange();
     const { selectedTerminal } = useTerminalStore();
 
-    // Format currency values
-    const formatAmount = (amount: number): string => {
-        return new Intl.NumberFormat('en-PH').format(amount);
+    // Format helpers for numeric output
+    const formatDecimal = (value: number, fractionDigits: number = 2): string => {
+        return new Intl.NumberFormat('en-PH', {
+            minimumFractionDigits: fractionDigits,
+            maximumFractionDigits: fractionDigits,
+        }).format(value ?? 0);
+    };
+
+    const formatInteger = (value: number): string => {
+        return new Intl.NumberFormat('en-PH', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(value ?? 0);
     };
 
     // Load data when component mounts
@@ -151,31 +164,31 @@ export default function DailySalesIndex() {
                 }
             }
             
-            // Prepare data for export
-            const exportData = allData.map((item: DailySalesData) => ({
-                'Branch': item.branch_name,
-                'Store': item.store_name,
-                'Terminal': item.terminal_no,
-                'Date': item.date,
-                'SI From': Number(item.si_from),
-                'SI To': Number(item.si_to),
-                'Z-Read Counter': Number(item.z_read_counter),
-                'Old Grand Total': Number(item.old_grand_total),
-                'New Grand Total': Number(item.new_grand_total),
-                'Gross Sales': Number(item.total_gross_sales),
-                'Net Sales': Number(item.total_net_sales_after_void),
-                '# of Transactions': Number(item.number_of_transactions),
-                '# of Guests': Number(item.number_of_guests),
-                'Service Charge': Number(item.total_service_charge),
-                'Void Amount': Number(item.total_void_amount),
-                'PWD Discount': Number(item.PWD_Discount),
-                'Senior Discount': Number(item.Senior_Discount),
-                'National Athletes Discount': Number(item.National_Athletes_Discount),
-                'Solo Parent Discount': Number(item.Solo_Parent_Discount),
-                'Valor Discount': Number(item.Valor_Discount),
-                'Other Discounts': Number(item.Other_Discounts),
-            }));
-            
+
+const exportData = allData.map((item: DailySalesData) => ({
+    'Branch': item.branch_name,
+    'Store': item.store_name,
+    'Terminal': item.terminal_no,
+    'Date': item.date,
+    'SI From': Number(item.si_from),
+    'SI To': Number(item.si_to),
+    'Z-Read Counter': Number(item.z_read_counter),
+    'Old Grand Total': Number(item.old_grand_total),
+    'New Grand Total': Number(item.new_grand_total),
+    'Gross Sales': Number(item.total_gross_sales),
+    'Total Net Sales': Number(item.total_net_sales_after_void),
+    '# of Transactions': Number(item.number_of_transactions),
+    '# of Guests': Number(item.number_of_guests),
+    'Service Charge': Number(item.total_service_charge),
+    'Void Amount': Number(item.total_void_amount),
+    'Less VAT': Number(item.less_vat),
+    'PWD Discount': Number(item.PWD_Discount),
+    'Senior Discount': Number(item.Senior_Discount),
+    'National Athletes Discount': Number(item.National_Athletes_Discount),
+    'Solo Parent Discount': Number(item.Solo_Parent_Discount),
+    'Valor Discount': Number(item.Valor_Discount),
+    'Other Discounts': Number(item.Other_Discounts),
+}));
             // Create Excel workbook
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             
@@ -183,26 +196,84 @@ export default function DailySalesIndex() {
             if (grandTotals) {
                 // Append a blank row then a numeric grand totals row (no formatted strings)
                 XLSX.utils.sheet_add_aoa(worksheet, [[""]], { origin: -1 });
-                const grandTotalRow = [
-                    'Grand Totals:', '', '', '', '', '', '', '', '',
-                    Number(grandTotals.total_gross_sales),
-                    Number(grandTotals.total_net_sales_after_void),
-                    Number(grandTotals.number_of_transactions),
-                    Number(grandTotals.number_of_guests),
-                    Number(grandTotals.total_service_charge),
-                    Number(grandTotals.total_void_amount),
-                    Number(grandTotals.PWD_Discount),
-                    Number(grandTotals.Senior_Discount),
-                    Number(grandTotals.National_Athletes_Discount),
-                    Number(grandTotals.Solo_Parent_Discount),
-                    Number(grandTotals.Valor_Discount),
-                    Number(grandTotals.Other_Discounts),
-                ];
+             
+const grandTotalRow = [
+    'Grand Totals:', '', '', '', '', '', '', '', '',
+    Number(grandTotals.total_gross_sales),
+    Number(grandTotals.total_net_sales_after_void),
+    Number(grandTotals.number_of_transactions),
+    Number(grandTotals.number_of_guests),
+    Number(grandTotals.total_service_charge),
+    Number(grandTotals.total_void_amount),
+    Number(grandTotals.less_vat), // Add this line
+    Number(grandTotals.PWD_Discount),
+    Number(grandTotals.Senior_Discount),
+    Number(grandTotals.National_Athletes_Discount),
+    Number(grandTotals.Solo_Parent_Discount),
+    Number(grandTotals.Valor_Discount),
+    Number(grandTotals.Other_Discounts),
+];
                 XLSX.utils.sheet_add_aoa(worksheet, [grandTotalRow], { origin: -1 });
             }
 
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Daily Sales Report');
+
+            if (worksheet['!ref']) {
+                const range = XLSX.utils.decode_range(worksheet['!ref']);
+                const decimalHeaders = new Set([
+                    'Old Grand Total',
+                    'New Grand Total',
+                    'Gross Sales',
+                    'Total Net Sales',
+                    'Service Charge',
+                    'Void Amount',
+                    'Less VAT',
+                    'PWD Discount',
+                    'Senior Discount',
+                    'National Athletes Discount',
+                    'Solo Parent Discount',
+                    'Valor Discount',
+                    'Other Discounts',
+                ]);
+                const integerHeaders = new Set([
+                    'SI From',
+                    'SI To',
+                    'Z-Read Counter',
+                    '# of Transactions',
+                    '# of Guests',
+                ]);
+
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const headerAddress = XLSX.utils.encode_cell({ r: range.s.r, c: C });
+                    const headerCell = worksheet[headerAddress];
+                    if (!headerCell) {
+                        continue;
+                    }
+
+                    const headerValue = headerCell.v as string;
+                    let numberFormat: string | null = null;
+
+                    if (decimalHeaders.has(headerValue)) {
+                        numberFormat = '#,##0.00';
+                    } else if (integerHeaders.has(headerValue)) {
+                        numberFormat = '#,##0';
+                    }
+
+                    if (!numberFormat) {
+                        continue;
+                    }
+
+                    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                        const cell = worksheet[cellAddress];
+                        if (cell && typeof cell.v === 'number') {
+                            cell.t = 'n';
+                            cell.z = numberFormat;
+                        }
+                    }
+                }
+            }
             
             // Generate file name with date range and filters
             const fromDate = selectedDateRange?.from ? format(selectedDateRange.from, 'yyyyMMdd') : format(new Date(), 'yyyyMMdd');
@@ -249,13 +320,13 @@ export default function DailySalesIndex() {
                 }
             }
             
-            // Define columns for table with individual discount columns
-            const headers = [
-                'Branch', 'Store', 'Terminal', 'Date', 'SI From', 'SI To', 'Z-Read Counter',
-                'Old Grand Total', 'New Grand Total', 'Gross Sales', 'Net Sales', 'No. of Transactions',
-                'Void Amount', 'Guests','Service Charge', 'PWD Discount', 'Senior Discount', 'National Athletes Discount',
-                'Solo Parent Discount', 'Valor Discount', 'Other Discounts'
-            ];
+         
+const headers = [
+    'Branch', 'Store', 'Terminal', 'Date', 'SI From', 'SI To', 'Z-Read Counter',
+    'Old Grand Total', 'New Grand Total', 'Gross Sales', 'Net Sales', 'No. of Transactions',
+    'Void Amount', 'Less VAT', 'Guests','Service Charge', 'PWD Discount', 'Senior Discount', 'National Athletes Discount', // Updated this line
+    'Solo Parent Discount', 'Valor Discount', 'Other Discounts'
+];
             
             // Determine page format based on column count and data length
             let pageFormat: string | [number, number] = 'a4';
@@ -325,29 +396,31 @@ export default function DailySalesIndex() {
             yPos += 10;
             
             // Create detailed data for PDF table with proper formatting
-            const tableData = allData.map((item: DailySalesData) => [
-                item.branch_name,
-                item.store_name,
-                item.terminal_no,
-                item.date,
-                item.si_from,
-                item.si_to,
-                item.z_read_counter,
-                formatAmount(Number(item.old_grand_total)),
-                formatAmount(Number(item.new_grand_total)),
-                formatAmount(item.total_gross_sales),
-                formatAmount(item.total_net_sales_after_void),
-                item.number_of_transactions,
-                formatAmount(item.total_void_amount),
-                item.number_of_guests,
-                formatAmount(item.total_service_charge),
-                formatAmount(item.PWD_Discount),
-                formatAmount(item.Senior_Discount),
-                formatAmount(item.National_Athletes_Discount),
-                formatAmount(item.Solo_Parent_Discount),
-                formatAmount(item.Valor_Discount),
-                formatAmount(item.Other_Discounts)
-            ]);
+       
+const tableData = allData.map((item: DailySalesData) => [
+    item.branch_name,
+    item.store_name,
+    item.terminal_no,
+    item.date,
+    formatInteger(item.si_from),
+    formatInteger(item.si_to),
+    formatInteger(item.z_read_counter),
+    formatDecimal(item.old_grand_total),
+    formatDecimal(item.new_grand_total),
+    formatDecimal(item.total_gross_sales),
+    formatDecimal(item.total_net_sales_after_void),
+    formatInteger(item.number_of_transactions),
+    formatDecimal(item.total_void_amount),
+    formatDecimal(item.less_vat),
+    formatInteger(item.number_of_guests),
+    formatDecimal(item.total_service_charge),
+    formatDecimal(item.PWD_Discount),
+    formatDecimal(item.Senior_Discount),
+    formatDecimal(item.National_Athletes_Discount),
+    formatDecimal(item.Solo_Parent_Discount),
+    formatDecimal(item.Valor_Discount),
+    formatDecimal(item.Other_Discounts)
+]);
             
             // Adjust font size based on data length and page size
             let fontSize = 8;
@@ -371,8 +444,9 @@ export default function DailySalesIndex() {
                     columnStyles[index] = { cellWidth: 18 };
                 }
                 // Numeric columns with potentially large values
-                else if (['Old Grand Total', 'New Grand Total', 'Gross Sales', 'Net Sales', 'Void Amount'].includes(header)) {
-                    columnStyles[index] = { cellWidth: 20, halign: 'right' };
+               // Update the column width logic (around line 374)
+                else if (['Old Grand Total', 'New Grand Total', 'Gross Sales', 'Net Sales', 'Void Amount', 'Less VAT'].includes(header)) { // Updated this line
+                    columnStyles[index] = { cellWidth: 22 };
                 }
                 // Discount columns (usually smaller numbers)
                 else if (header.includes('Discount')) {
@@ -412,25 +486,28 @@ export default function DailySalesIndex() {
 
             // Add grand totals to the PDF if available
             if (grandTotals) {
-                const grandTotalHeaders = [
-                    'Grand Totals:', '', '', '', '', '', '', '', '', // Empty cells for alignment
-                    'Gross Sales', 'Net Sales', 'Transactions', 'Void Amount', 'Guests','Service Charge', 'PWD', 'Senior', 'National Athletes', 'Solo Parent', 'Valor', 'Other'
-                ];
-                const grandTotalValues = [
-                    '', '', '', '', '', '', '', '', '', // Empty cells for alignment
-                    formatAmount(grandTotals.total_gross_sales),
-                    formatAmount(grandTotals.total_net_sales_after_void),
-                    grandTotals.number_of_transactions,
-                    formatAmount(grandTotals.total_void_amount),
-                    grandTotals.number_of_guests,
-                    formatAmount(grandTotals.total_service_charge),
-                    formatAmount(grandTotals.PWD_Discount),
-                    formatAmount(grandTotals.Senior_Discount),
-                    formatAmount(grandTotals.National_Athletes_Discount),
-                    formatAmount(grandTotals.Solo_Parent_Discount), 
-                    formatAmount(grandTotals.Valor_Discount),
-                    formatAmount(grandTotals.Other_Discounts)
-                ];
+             // Update the grandTotalHeaders array (around line 417)
+            const grandTotalHeaders = [
+                'Grand Totals:', '', '', '', '', '', '', '', '', // Empty cells for alignment
+                'Gross Sales', 'Net Sales', 'Transactions', 'Void Amount', 'Less VAT', 'Guests','Service Charge', 'PWD', 'Senior', 'National Athletes', 'Solo Parent', 'Valor', 'Other' // Updated this line
+            ];
+                // Update the grandTotalValues array (around line 420)
+const grandTotalValues = [
+    '', '', '', '', '', '', '', '', '', // Empty cells for alignment
+    formatDecimal(grandTotals.total_gross_sales),
+    formatDecimal(grandTotals.total_net_sales_after_void),
+    formatInteger(grandTotals.number_of_transactions),
+    formatDecimal(grandTotals.total_void_amount),
+    formatDecimal(grandTotals.less_vat),
+    formatInteger(grandTotals.number_of_guests),
+    formatDecimal(grandTotals.total_service_charge),
+    formatDecimal(grandTotals.PWD_Discount),
+    formatDecimal(grandTotals.Senior_Discount),
+    formatDecimal(grandTotals.National_Athletes_Discount),
+    formatDecimal(grandTotals.Solo_Parent_Discount), 
+    formatDecimal(grandTotals.Valor_Discount),
+    formatDecimal(grandTotals.Other_Discounts)
+];
 
                 autoTable(doc, {
                     head: [grandTotalHeaders],
@@ -472,10 +549,12 @@ export default function DailySalesIndex() {
                                        <div className="flex flex-col gap-4 max-w-full overflow-hidden">
                                            <TextHeader title="Daily Sales Report" />
                                            <div className="flex flex-col md:flex-col lg:flex-row md:justify-between lg:justify-between gap-4">
-                                               <div className="flex flex-wrap items-end gap-2">
+                                    <div className="flex gap-2">
                                         <BranchSelect/>
-                                        <DateRangePickernew/>
-                                        <TerminalSelect/>
+                                       <div className="w-auto">
+                                         <DateRangePickernew/>
+                                       </div>
+                                        
                                         <Button onClick={fetchDailySalesData} disabled={loading}>
                                             {loading ? (
                                                 <>
@@ -524,33 +603,35 @@ export default function DailySalesIndex() {
                                     <Table>
                                         <TableHeader className="sticky-header">
                                             <TableRow>
-                                                <TableHead className="min-w-[150px] whitespace-nowrap">Branch</TableHead>
-                                                <TableHead className="min-w-[150px] whitespace-nowrap">Store</TableHead>
-                                                <TableHead className="min-w-[100px] whitespace-nowrap">Terminal</TableHead>
-                                                <TableHead className="min-w-[100px] whitespace-nowrap">Date</TableHead>
-                                                <TableHead className="min-w-[100px] whitespace-nowrap">SI From</TableHead>
-                                                <TableHead className="min-w-[100px] whitespace-nowrap">SI To</TableHead>
-                                                <TableHead className="min-w-[120px] whitespace-nowrap">Z-Read Counter</TableHead>
-                                                <TableHead className="min-w-[150px] whitespace-nowrap">Old Grand Total</TableHead>
-                                                <TableHead className="min-w-[150px] whitespace-nowrap">New Grand Total</TableHead>
-                                                <TableHead className="min-w-[120px] whitespace-nowrap">Gross Sales</TableHead>
-                                                <TableHead className="min-w-[120px] whitespace-nowrap">Net Sales</TableHead>
-                                                <TableHead className="min-w-[150px] whitespace-nowrap">No. of Transactions</TableHead>
-                                                <TableHead className="min-w-[120px] whitespace-nowrap">Void Amount</TableHead>
-                                                <TableHead className="min-w-[100px] whitespace-nowrap">Guests</TableHead>
-                                                <TableHead className="min-w-[120px] whitespace-nowrap">Service Charge</TableHead>
-                                                <TableHead className="min-w-[120px] whitespace-nowrap">PWD Discount</TableHead>
-                                                <TableHead className="min-w-[150px] whitespace-nowrap">Senior Discount</TableHead>
-                                                <TableHead className="min-w-[200px] whitespace-nowrap">National Athletes Discount</TableHead>
-                                                <TableHead className="min-w-[150px] whitespace-nowrap">Solo Parent Discount</TableHead>
-                                                <TableHead className="min-w-[120px] whitespace-nowrap">Valor Discount</TableHead>
-                                                <TableHead className="min-w-[150px] whitespace-nowrap">Other Discounts</TableHead>
-                                            </TableRow>
+                                          
+<TableHead className="min-w-[150px] whitespace-nowrap">Branch</TableHead>
+<TableHead className="min-w-[150px] whitespace-nowrap">Store</TableHead>
+<TableHead className="min-w-[100px] whitespace-nowrap">Terminal</TableHead>
+<TableHead className="min-w-[100px] whitespace-nowrap">Date</TableHead>
+<TableHead className="min-w-[100px] whitespace-nowrap">SI From</TableHead>
+<TableHead className="min-w-[100px] whitespace-nowrap">SI To</TableHead>
+<TableHead className="min-w-[120px] whitespace-nowrap">Z-Read Counter</TableHead>
+<TableHead className="min-w-[150px] whitespace-nowrap">Old Grand Total</TableHead>
+<TableHead className="min-w-[150px] whitespace-nowrap">New Grand Total</TableHead>
+<TableHead className="min-w-[120px] whitespace-nowrap">Gross Sales</TableHead>
+<TableHead className="min-w-[120px] whitespace-nowrap">Total Net Sales</TableHead>
+<TableHead className="min-w-[150px] whitespace-nowrap">No. of Transactions</TableHead>
+<TableHead className="min-w-[120px] whitespace-nowrap">Void Amount</TableHead>
+<TableHead className="min-w-[120px] whitespace-nowrap">Less VAT</TableHead> {/* Add this line */}
+<TableHead className="min-w-[100px] whitespace-nowrap">Guests</TableHead>
+<TableHead className="min-w-[120px] whitespace-nowrap">Service Charge</TableHead>
+<TableHead className="min-w-[120px] whitespace-nowrap">PWD Discount</TableHead>
+<TableHead className="min-w-[150px] whitespace-nowrap">Senior Discount</TableHead>
+<TableHead className="min-w-[200px] whitespace-nowrap">National Athletes Discount</TableHead>
+<TableHead className="min-w-[150px] whitespace-nowrap">Solo Parent Discount</TableHead>
+<TableHead className="min-w-[120px] whitespace-nowrap">Valor Discount</TableHead>
+<TableHead className="min-w-[150px] whitespace-nowrap">Other Discounts</TableHead>
+ </TableRow>
                                         </TableHeader>
                                         <TableBody>
                                             {loading ? (
                                                 <TableRow>
-                                                    <TableCell colSpan={20} className="h-40 text-center">
+                                                    <TableCell colSpan={22} className="h-40 text-center">
                                                         <div className="flex justify-center items-center">
                                                             <Loader2 className="h-8 w-8 animate-spin" />
                                                             <span className="ml-2">Loading data...</span>
@@ -559,55 +640,57 @@ export default function DailySalesIndex() {
                                                 </TableRow>
                                             ) : dailySalesData.length === 0 ? (
                                                 <TableRow>
-                                                    <TableCell colSpan={20} className="h-40 text-center text-gray-500">
+                                                    <TableCell colSpan={22} className="h-40 text-center text-gray-500">
                                                         No data available. Please adjust your search criteria.
                                                     </TableCell>
                                                 </TableRow>
                                             ) : (
                                                 dailySalesData.map((item, index) => (
-                                                    <TableRow key={index}>
-                                                        <TableCell className="whitespace-nowrap">{item.branch_name}</TableCell>
-                                                        <TableCell className="whitespace-nowrap">{item.store_name}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{item.terminal_no}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{item.date}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{item.si_from}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{item.si_to}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{item.z_read_counter}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(Number(item.old_grand_total))}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(Number(item.new_grand_total))}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.total_gross_sales)}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.total_net_sales_after_void)}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{item.number_of_transactions}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.total_void_amount)}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{item.number_of_guests}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.total_service_charge)}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.PWD_Discount)}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.Senior_Discount)}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.National_Athletes_Discount)}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.Solo_Parent_Discount)}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.Valor_Discount)}</TableCell>
-                                                        <TableCell className="whitespace-nowrap text-center">{formatAmount(item.Other_Discounts)}</TableCell>
-                                                    </TableRow>
+                                                  // Update the TableRow section (around line 568)
+<TableRow key={index}>
+    <TableCell className="whitespace-nowrap">{item.branch_name}</TableCell>
+    <TableCell className="whitespace-nowrap">{item.store_name}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{item.terminal_no}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{item.date}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatInteger(item.si_from)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatInteger(item.si_to)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatInteger(item.z_read_counter)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.old_grand_total)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.new_grand_total)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.total_gross_sales)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.total_net_sales_after_void)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatInteger(item.number_of_transactions)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.total_void_amount)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.less_vat)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatInteger(item.number_of_guests)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.total_service_charge)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.PWD_Discount)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.Senior_Discount)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.National_Athletes_Discount)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.Solo_Parent_Discount)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.Valor_Discount)}</TableCell>
+    <TableCell className="whitespace-nowrap text-center">{formatDecimal(item.Other_Discounts)}</TableCell>
+</TableRow>
                                                 ))
                                             )}
 
 {grandTotals && (dailySalesData.length > 0) && (
-                                     
                                      <TableRow className="bg-primary-foreground font-bold">
-                                         <TableCell colSpan={9} className="text-right">Grand Totals:</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.total_gross_sales)}</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.total_net_sales_after_void)}</TableCell>
-                                         <TableCell className="text-center">{grandTotals.number_of_transactions}</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.total_void_amount)}</TableCell>
-                                         <TableCell className="text-center">{grandTotals.number_of_guests}</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.total_service_charge)}</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.PWD_Discount)}</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.Senior_Discount)}</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.National_Athletes_Discount)}</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.Solo_Parent_Discount)}</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.Valor_Discount)}</TableCell>
-                                         <TableCell className="text-center">{formatAmount(grandTotals.Other_Discounts)}</TableCell>
-                                     </TableRow>
+                                     <TableCell colSpan={9} className="text-right">Grand Totals:</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.total_gross_sales)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.total_net_sales_after_void)}</TableCell>
+                                     <TableCell className="text-center">{formatInteger(grandTotals.number_of_transactions)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.total_void_amount)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.less_vat)}</TableCell>
+                                     <TableCell className="text-center">{formatInteger(grandTotals.number_of_guests)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.total_service_charge)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.PWD_Discount)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.Senior_Discount)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.National_Athletes_Discount)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.Solo_Parent_Discount)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.Valor_Discount)}</TableCell>
+                                     <TableCell className="text-center">{formatDecimal(grandTotals.Other_Discounts)}</TableCell>
+                                 </TableRow>
                              )}
                                         </TableBody>
                                     </Table>

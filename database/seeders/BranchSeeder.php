@@ -20,16 +20,23 @@ class BranchSeeder extends Seeder
         }
 
         DB::table('branches')->insert([
-       
             [
-                'store_name' => $storeName, 
+                'branch_name' => 'MYEUREKA TRINOMA',
+                'branch_description' => 'MYEUREKA TRINOMA',
+                'store_name' => 'MYEUREKA PH OPC',
+                'status' => 'active',
+                'created_at' => '2025-08-20 08:25:17',
+                'updated_at' => '2025-08-20 08:25:17',
+            ],
+            [
                 'branch_name' => 'MYEUREKA PH OPC',
-                'branch_description' => 'MYEUREKA PH OPC',
-                'created_at' => now(),
-                'updated_at' => now(),
+                'branch_description' => 'MYEUREKA SM MEGAMALL',
+                'store_name' => 'MYEUREKA PH OPC',
+                'status' => 'active',
+                'created_at' => '2025-08-20 11:45:36',
+                'updated_at' => '2025-08-20 11:45:36',
             ],
          
-          
-        ]); 
+        ]);
     }
 }

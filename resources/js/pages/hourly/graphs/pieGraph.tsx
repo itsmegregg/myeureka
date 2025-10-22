@@ -58,7 +58,7 @@ export default function PieGraph({ data }: PieGraphProps) {
                                     fontWeight: 'normal',
                                     fontSize: '10px'
                                 },
-                                format: '{point.percentage:.1f}%'
+                                format: '{point.percentage:.2f}%'
                             }
                         }
                     },
@@ -102,13 +102,13 @@ export default function PieGraph({ data }: PieGraphProps) {
                 depth: 35,
                 dataLabels: {
                     enabled: true,
-                    format: '<b>{point.name}</b>: {point.percentage:.1f}%'
+                    format: '<b>{point.name}</b>: {point.percentage:.2f}%'
                 },
                 showInLegend: true
             }
         },
         tooltip: {
-            pointFormat: '{series.name}: <b>₱{point.y:,.2f}</b> ({point.percentage:.1f}%)'
+            pointFormat: '{series.name}: <b>₱{point.y:,.2f}</b> ({point.percentage:.2f}%)'
         },
         series: []
     });

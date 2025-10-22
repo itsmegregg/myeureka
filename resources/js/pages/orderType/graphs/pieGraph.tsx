@@ -51,7 +51,7 @@ export default function PieGraph({ data }: PieGraphProps) {
             text: 'Order Type Distribution'
         },
         tooltip: {
-            pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+            pointFormat: '{series.name}: <b>{point.percentage:.2f}%</b>'
         },
         plotOptions: {
             pie: {
@@ -60,7 +60,7 @@ export default function PieGraph({ data }: PieGraphProps) {
                 depth: 35,
                 dataLabels: {
                     enabled: true,
-                    format: '<b>{point.name}</b>: {point.percentage:.1f} %',
+                    format: '<b>{point.name}</b>: {point.percentage:.2f} %',
                     style: {
                         color: 'black'
                     }

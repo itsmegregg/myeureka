@@ -28,32 +28,60 @@ class PaymentController extends Controller
                 'terminal_number' => 'required|string',
                 'si_number' => 'required|string',
                 'payment_type' => 'required|string',
-                'amount' => 'required|string',
+                'amount' => 'required|numeric',
             ]);
-    
-            // Check if record already exists with these key fields
-            $existingPayment = PaymentDetail::where('branch_name', $validatedData['branch_name'])
-                ->where('store_name', $validatedData['store_name'])
-                ->where('terminal_number', $validatedData['terminal_number'])
-                ->where('si_number', $validatedData['si_number'])
-                ->where('payment_type', $validatedData['payment_type'])
+
+            $stripLeadingZeros = static function (string $value): string {
+                $normalized = ltrim($value, '0');
+
+                return $normalized === '' ? '0' : $normalized;
+            };
+
+            $branchName = strtoupper(trim($validatedData['branch_name']));
+            $storeName = strtoupper(trim($validatedData['store_name']));
+            $terminalNumberRaw = trim($validatedData['terminal_number']);
+            $siNumberRaw = trim($validatedData['si_number']);
+            $paymentType = strtoupper(trim($validatedData['payment_type']));
+
+            $normalizedTerminal = $stripLeadingZeros($terminalNumberRaw);
+            $normalizedSi = $stripLeadingZeros($siNumberRaw);
+
+            $existingPayment = PaymentDetail::query()
+                ->whereRaw('TRIM(UPPER(branch_name)) = ?', [$branchName])
+                ->whereRaw('TRIM(UPPER(store_name)) = ?', [$storeName])
+                ->whereRaw('TRIM(UPPER(payment_type)) = ?', [$paymentType])
+                ->whereRaw("regexp_replace(TRIM(terminal_number), '^0+', '') = ?", [$normalizedTerminal])
+                ->whereRaw("regexp_replace(TRIM(CAST(si_number AS TEXT)), '^0+', '') = ?", [$normalizedSi])
                 ->first();
-    
+
             if ($existingPayment) {
-                // Update existing record
-                $existingPayment->update($validatedData);
-                return response()->json([
-                    'message' => 'Payment detail updated successfully',
-                    'data' => $existingPayment
-                ], 200);
+                $existingPayment->update([
+                    'branch_name' => $branchName,
+                    'store_name' => $storeName,
+                    'terminal_number' => $terminalNumberRaw,
+                    'si_number' => $siNumberRaw,
+                    'payment_type' => $paymentType,
+                    'amount' => $validatedData['amount'],
+                ]);
+
+                $payment = $existingPayment->refresh();
             } else {
-                // Create new record
-                $payment = PaymentDetail::create($validatedData);
-                return response()->json([
-                    'message' => 'Payment detail created successfully',
-                    'data' => $payment
-                ], 201);
+                $payment = PaymentDetail::create([
+                    'branch_name' => $branchName,
+                    'store_name' => $storeName,
+                    'terminal_number' => $terminalNumberRaw,
+                    'si_number' => $siNumberRaw,
+                    'payment_type' => $paymentType,
+                    'amount' => $validatedData['amount'],
+                ]);
             }
+
+            return response()->json([
+                'message' => $existingPayment
+                    ? 'Payment detail updated successfully'
+                    : 'Payment detail created successfully',
+                'data' => $payment
+            ], $existingPayment ? 200 : 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'message' => 'Validation error',

@@ -14,15 +14,19 @@ return new class extends Migration
         Schema::create('receipts', function (Blueprint $table) {
             $table->id();
             $table->string('si_number');
-            $table->string('file_path');
-            $table->string('date');
+            $table->date('date');
             $table->string('branch_name');
-   
+            $table->string('type')->nullable();
+            $table->text('file_content')->nullable();
+            $table->string('file_name')->nullable();
+            $table->string('mime_type', 100)->default('text/plain');
             $table->timestamps();
 
             $table->foreign('branch_name')->references('branch_name')->on('branches')->onDelete('cascade');
+
+            $table->index('date');
+            $table->index('branch_name');
         });
-        
     }
 
     /**
@@ -30,6 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('receipt');
+        Schema::dropIfExists('receipts');
     }
 };

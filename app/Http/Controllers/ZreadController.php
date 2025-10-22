@@ -41,11 +41,17 @@ class ZreadController extends Controller
             $from = $request->from_date;
             $to = $request->to_date;
 
+            $fromDate = new \DateTimeImmutable($from);
+            $toDate = new \DateTimeImmutable($to);
+
 
             // Swap dates if from_date is after to_date
-            if (strtotime($from) > strtotime($to)) {
-                [$from, $to] = [$to, $from];
+            if ($fromDate > $toDate) {
+                [$fromDate, $toDate] = [$toDate, $fromDate];
             }
+
+            $from = $fromDate->format('Y-m-d');
+            $to = $toDate->format('Y-m-d');
 
             $query = Zread::query()
                 ->whereBetween('date', [$from, $to])

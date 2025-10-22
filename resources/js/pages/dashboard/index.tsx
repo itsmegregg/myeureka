@@ -69,10 +69,6 @@ export default function Dashboard() {
     }, [selectedMonth, selectedBranch, selectedStore]);
 
 
-    useEffect(() => {
-        handleUpdate();
-    }, []);
-    // Create a unique key based on the branch and month to force re-render
     const dashboardKey = `dashboard-${selectedBranch?.branch_name ?? 'ALL'}-${selectedMonth ? format(selectedMonth, 'yyyy-MM') : 'current'}`;
 
     const fetchDashboardData = async () => {

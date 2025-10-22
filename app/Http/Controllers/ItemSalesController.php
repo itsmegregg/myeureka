@@ -31,6 +31,14 @@ class ItemSalesController extends Controller
         $store = strtoupper($request->input('store_name', 'ALL')); // Changed from store_id to concept_id
         $terminal = strtoupper($request->input('terminal_number', 'ALL'));
         $perPage = $request->input('per_page', 15);
+
+        $stripLeadingZeros = static function (string $value): string {
+            $normalized = ltrim($value, '0');
+
+            return $normalized === '' ? '0' : $normalized;
+        };
+
+        $normalizedTerminal = $terminal === 'ALL' ? null : $stripLeadingZeros($terminal);
         
         // Main query for product mix
         $productMix = ItemDetail::select(
@@ -39,11 +47,13 @@ class ItemSalesController extends Controller
             DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
             DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as total_net_sales')
         )
-        ->join('header', function ($join) use ($terminal) {
-            $join->on('item_details.si_number', '=', 'header.si_number')
-                 ->on('item_details.terminal_number', '=', 'header.terminal_number')
-                 ->on('item_details.branch_name', '=', 'header.branch_name')
-                 ->when($terminal !== 'ALL', function ($query) use ($terminal) { $query->where('header.terminal_number', $terminal); });
+        ->join('header', function ($join) use ($normalizedTerminal) {
+            $join->on('item_details.si_number', '=', DB::raw('CAST(header.si_number AS INTEGER)'))
+                 ->on(DB::raw('item_details.terminal_number::integer'), '=', DB::raw('header.terminal_number::integer'))
+                 ->on(DB::raw('UPPER(item_details.branch_name)'), '=', DB::raw('UPPER(header.branch_name)'))
+                 ->when($normalizedTerminal !== null, function ($query) use ($normalizedTerminal) {
+                     $query->whereRaw('header.terminal_number::integer = ?', [$normalizedTerminal]);
+                 });
         })
         ->leftJoin('products', function($join) {
             $join->on('item_details.product_code', '=', 'products.product_code');
@@ -53,15 +63,15 @@ class ItemSalesController extends Controller
 
 
         if ($store !== 'ALL') {
-            $productMix->where('item_details.store_name', $store);
+            $productMix->whereRaw('UPPER(item_details.store_name) = ?', [$store]);
         }
 
         if ($product !== 'ALL') {
-            $productMix->where('item_details.product_code', $product);
+            $productMix->whereRaw('UPPER(item_details.product_code) = ?', [$product]);
         }
 
         if ($branch !== 'ALL') {
-            $productMix->where('item_details.branch_name', $branch);
+            $productMix->whereRaw('UPPER(item_details.branch_name) = ?', [$branch]);
         }
 
 
@@ -89,7 +99,7 @@ class ItemSalesController extends Controller
         }
 
         // Fetch combo items for each combo product
-        $results = $results->map(function ($item) use ($startDate, $endDate, $branch, $store, $terminal) {
+        $results = $results->map(function ($item) use ($startDate, $endDate, $branch, $store, $normalizedTerminal) {
             // Check if this is a combo product by looking for items that reference it as combo_main_code
             $comboItems = ItemDetail::select(
                 'item_details.product_code',
@@ -97,10 +107,13 @@ class ItemSalesController extends Controller
                 DB::raw('SUM(CAST(item_details.qty AS NUMERIC)) as total_quantity'),
                 DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
             )
-            ->join('header', function ($join) {
-                $join->on('item_details.si_number', '=', 'header.si_number')
-                     ->on('item_details.terminal_number', '=', 'header.terminal_number')
-                     ->on('item_details.branch_name', '=', 'header.branch_name');
+            ->join('header', function ($join) use ($normalizedTerminal) {
+                $join->on('item_details.si_number', '=', DB::raw('CAST(header.si_number AS INTEGER)'))
+                     ->on(DB::raw('item_details.terminal_number::integer'), '=', DB::raw('header.terminal_number::integer'))
+                     ->on(DB::raw('UPPER(item_details.branch_name)'), '=', DB::raw('UPPER(header.branch_name)'))
+                     ->when($normalizedTerminal !== null, function ($query) use ($normalizedTerminal) {
+                         $query->whereRaw('header.terminal_number::integer = ?', [$normalizedTerminal]);
+                     });
             })
             ->leftJoin('products', function($join) {
                 $join->on('item_details.product_code', '=', 'products.product_code');
@@ -110,11 +123,11 @@ class ItemSalesController extends Controller
             ->where("item_details.void_flag", 0);
             
             if ($store !== 'ALL') {
-                $comboItems->where('item_details.store_name', $store);
+                $comboItems->whereRaw('UPPER(item_details.store_name) = ?', [$store]);
             }
             
             if ($branch !== 'ALL') {
-                $comboItems->where('item_details.branch_name', $branch);
+                $comboItems->whereRaw('UPPER(item_details.branch_name) = ?', [$branch]);
             }
 
 
@@ -153,9 +166,9 @@ class ItemSalesController extends Controller
     {
         $startDate = $request->input('from_date');
         $endDate = $request->input('to_date');
-        $branch = strtoupper($request->input('branch_id', 'ALL'));
+        $branch = strtoupper($request->input('branch_name', 'ALL'));
         $category = strtoupper($request->input('category_code', 'ALL'));
-        $store = strtoupper($request->input('concept_id', 'ALL')); // Changed from store_id to concept_id
+        $store = strtoupper($request->input('store_name', 'ALL'));
 
         try {
             $query = ItemDetail::select([
@@ -167,7 +180,7 @@ class ItemSalesController extends Controller
                 DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
             ])
             ->join('header', function ($join) {
-                $join->on('item_details.si_number', '=', 'header.si_number')
+                $join->on('item_details.si_number', '=', DB::raw('CAST(header.si_number AS INTEGER)'))
                      ->on('item_details.terminal_number', '=', 'header.terminal_number')
                      ->on('item_details.branch_name', '=', 'header.branch_name');
             })
@@ -176,13 +189,13 @@ class ItemSalesController extends Controller
             ->whereBetween('header.date', [$startDate, $endDate])
             ->where("item_details.void_flag", 0)
             ->when($store !== 'ALL', function ($q) use ($store) {
-                return $q->where('item_details.store_name', $store);
+                return $q->whereRaw('UPPER(item_details.store_name) = ?', [$store]);
             })
             ->when($branch !== 'ALL', function ($q) use ($branch) {
-                return $q->where('item_details.branch_name', $branch);
+                return $q->whereRaw('UPPER(item_details.branch_name) = ?', [$branch]);
             })
             ->when($category !== 'ALL', function ($q) use ($category) {
-                return $q->where('products.category_code', $category);
+                return $q->whereRaw('UPPER(products.category_code) = ?', [$category]);
             })
             ->groupBy(
                 'categories.category_code',
@@ -240,7 +253,7 @@ class ItemSalesController extends Controller
                     DB::raw('SUM(CAST(item_details.net_total AS NUMERIC)) as net_sales')
                 )
                 ->join('header', function ($join) {
-                    $join->on('item_details.si_number', '=', 'header.si_number')
+                    $join->on('item_details.si_number', '=', DB::raw('CAST(header.si_number AS INTEGER)'))
                          ->on('item_details.terminal_number', '=', 'header.terminal_number')
                          ->on('item_details.branch_name', '=', 'header.branch_name');
                 })
@@ -250,11 +263,11 @@ class ItemSalesController extends Controller
                 ->where("item_details.void_flag", 0);
                 
                 if ($store !== 'ALL') {
-                    $comboItems->where('item_details.store_name', $store);
+                    $comboItems->whereRaw('UPPER(item_details.store_name) = ?', [$store]);
                 }
                 
                 if ($branch !== 'ALL') {
-                    $comboItems->where('item_details.branch_name', $branch);
+                    $comboItems->whereRaw('UPPER(item_details.branch_name) = ?', [$branch]);
                 }
                 
                 $comboItems = $comboItems->groupBy('item_details.product_code', 'products.product_description')

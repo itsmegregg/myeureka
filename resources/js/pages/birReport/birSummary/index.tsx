@@ -21,14 +21,129 @@ import * as XLSX from 'xlsx';
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { IconFileTypeXls, IconFileTypePdf } from '@tabler/icons-react';
 
+type BirSummaryRow = Record<string, string | number | null | undefined>;
+
 export default function BirSummary() {
     const { selectedBranch } = useBranchStore();
     const { selectedStore } = useStore();
     const { dateRange: selectedDateRange } = useDateRange();
 
-    const [birSummaryData, setBirSummaryData] = useState<any[]>([]);
+    const [birSummaryData, setBirSummaryData] = useState<BirSummaryRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState(false); // New state for export loading
+
+    const integerFieldHeaders = ['Z Counter'];
+    const integerFieldSet = new Set<string>(integerFieldHeaders.map((header) => header.toLowerCase()));
+
+    const plainIntegerFieldHeaders = ['SI First', 'SI Last', 'Total No of Guest'];
+    const plainIntegerFieldSet = new Set<string>(plainIntegerFieldHeaders.map((header) => header.toLowerCase()));
+
+    const decimalFieldHeaders = [
+        'Beginning',
+        'Ending',
+        'Net Amount',
+        'Service charge',
+        'Delivery Charge',
+        'Returns',
+        'Voids',
+        'Gross',
+        'Vatable',
+        'VAT Amount',
+        'VAT Exempt',
+        'Zero Rated',
+        'Less VAT',
+        'Athelete/Coach',
+        'Athlete/Coach',
+        'Disability',
+        'Senior',
+        'Cash',
+        'GCash',
+        'Gcash',
+        'Online Maya',
+        'Paymaya',
+        'RK Wallet',
+        'Rk Wallet',
+        'Total Sales',
+    ];
+    const decimalFieldSet = new Set<string>(decimalFieldHeaders.map((header) => header.toLowerCase()));
+
+    const toNumeric = (value: number | string | null | undefined): number => {
+        if (value === null || value === undefined || value === '') {
+            return NaN;
+        }
+
+        if (typeof value === 'number') {
+            return value;
+        }
+
+        const cleaned = value.replace(/,/g, '');
+        const numeric = Number(cleaned);
+        return numeric;
+    };
+
+    const isNumericValue = (value: unknown): boolean => {
+        return !Number.isNaN(toNumeric(value as any));
+    };
+
+    const formatDecimalValue = (value: number | string): string => {
+        const numeric = toNumeric(value);
+        if (Number.isNaN(numeric)) {
+            return '-';
+        }
+        return new Intl.NumberFormat('en-PH', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(numeric);
+    };
+
+    const formatIntegerValue = (value: number | string): string => {
+        const numeric = toNumeric(value);
+        if (Number.isNaN(numeric)) {
+            return '-';
+        }
+        return new Intl.NumberFormat('en-PH', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(Math.trunc(numeric));
+    };
+
+    const formatPlainIntegerValue = (value: number | string): string => {
+        const numeric = toNumeric(value);
+        if (Number.isNaN(numeric)) {
+            return '-';
+        }
+        return String(Math.trunc(numeric));
+    };
+
+    const formatValueForDisplay = (header: string, value: any): string => {
+        if (value === null || value === undefined || value === '') {
+            return '-';
+        }
+
+        if (header === 'Date') {
+            const parsed = new Date(value);
+            if (!Number.isNaN(parsed.getTime())) {
+                return format(parsed, 'yyyy-MM-dd');
+            }
+            return String(value);
+        }
+
+        const headerKey = header.toLowerCase();
+
+        if (plainIntegerFieldSet.has(headerKey) && isNumericValue(value)) {
+            return formatPlainIntegerValue(value);
+        }
+
+        if (integerFieldSet.has(headerKey) && isNumericValue(value)) {
+            return formatIntegerValue(value);
+        }
+
+        if (decimalFieldSet.has(headerKey) || isNumericValue(value)) {
+            return formatDecimalValue(value);
+        }
+
+        return String(value);
+    };
 
     const handleSearch = async () => {
         setLoading(true);
@@ -42,7 +157,7 @@ export default function BirSummary() {
                               
                 },
             });
-            setBirSummaryData(response.data.data);
+            setBirSummaryData(response.data.data as BirSummaryRow[]);
         } catch (error) {
             console.error('Error fetching BIR Summary data:', error);
             setBirSummaryData([]);
@@ -52,7 +167,7 @@ export default function BirSummary() {
     };
 
     // Helper: compute ordered headers (fixed first, then dynamic discounts)
-    function getOrderedHeaders(rows: any[]): string[] {
+    function getOrderedHeaders(rows: BirSummaryRow[]): string[] {
         const fixed: string[] = [
             'Branch',
             'Concept',
@@ -64,6 +179,7 @@ export default function BirSummary() {
             'Ending',
             'Net Amount',
             'Service charge',
+            'Total Sales',
             'Total No of Guest',
             'Returns',
             'Voids',
@@ -75,14 +191,27 @@ export default function BirSummary() {
             'Less VAT',
         ];
         const fixedSet = new Set(fixed);
-        const dynamic: string[] = rows.length > 0
-            ? Object.keys(rows[0]).filter((k) => !fixedSet.has(k))
-            : [];
+        const dynamic: string[] = [];
+        const dynamicSeen = new Set<string>();
+
+        rows.forEach((row) => {
+            Object.keys(row).forEach((key) => {
+                if (fixedSet.has(key)) {
+                    return;
+                }
+
+                if (!dynamicSeen.has(key)) {
+                    dynamicSeen.add(key);
+                    dynamic.push(key);
+                }
+            });
+        });
+
         return [...fixed, ...dynamic];
     }
 
     // New function to fetch all data for export
-    const fetchAllBirSummaryData = async () => {
+    const fetchAllBirSummaryData = async (): Promise<BirSummaryRow[]> => {
         setExporting(true);
         try {
             const response = await axios.get('/api/bir/summary-report/export', { // Assuming a new export endpoint
@@ -93,7 +222,7 @@ export default function BirSummary() {
                     store_name: selectedStore ?? 'ALL',
                 },
             });
-            return response.data.data;
+            return response.data.data as BirSummaryRow[];
         } catch (error) {
             console.error('Error fetching all BIR Summary data for export:', error);
             return [];
@@ -106,7 +235,7 @@ export default function BirSummary() {
     const handleExportExcel = async () => {
         setExporting(true);
         try {
-            let dataToExport = birSummaryData;
+            let dataToExport: BirSummaryRow[] = birSummaryData;
 
             if (dataToExport.length === 0) {
                 dataToExport = await fetchAllBirSummaryData();
@@ -119,8 +248,8 @@ export default function BirSummary() {
             
             const headers = getOrderedHeaders(dataToExport);
             // Format data for export ensuring column order matches headers exactly
-            const formattedData = dataToExport.map((row: any) => {
-                const orderedRow: Record<string, any> = {};
+            const formattedData = dataToExport.map((row: BirSummaryRow) => {
+                const orderedRow: BirSummaryRow = {};
                 headers.forEach((h) => {
                     orderedRow[h] = h in row ? row[h] : null;
                 });
@@ -129,82 +258,62 @@ export default function BirSummary() {
             
             // Create Excel sheet with ordered data
             const ws = XLSX.utils.json_to_sheet(formattedData);
-            
-            // Define number and decimal fields for proper formatting
-            const wholeNumberFields = [
-                'Z Counter',
-                'SI First',
-                'SI Last',
-                'Beginning',
-                'Ending',
-                'Total No of Guest',
-                'Returns',
-                'Voids'
-            ];
-            
-            const decimalFields = [
-                'Net Amount',
-                'Service charge',
-                'Gross',
-                'Vatable',
-                'VAT Amount',
-                'VAT Exempt',
-                'Zero Rated',
-                'Less VAT'
-            ];
-            
+
             // Apply number formatting to cells
             const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
-            const columnHeaders = Object.keys(formattedData[0] || {});
-            
+            const columnHeaders = headers;
+
             for (let R = range.s.r; R <= range.e.r; R++) {
                 for (let C = range.s.c; C <= range.e.c; C++) {
                     const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
                     const cell = ws[cellAddress];
-                    
-                    if (!cell || cell.v === null || cell.v === undefined) continue;
-                    
+
+                    if (!cell || cell.v === null || cell.v === undefined) {
+                        continue;
+                    }
+
                     const header = columnHeaders[C];
-                    const value = cell.v;
-                    
+                    const headerKey = (header || '').toLowerCase();
+
                     // Skip header row
-                    if (R === 0) continue;
-                    
-                    // Format whole numbers (integers)
-                    if (wholeNumberFields.includes(header)) {
-                        const numValue = parseInt(value, 10);
-                        if (!isNaN(numValue)) {
-                            cell.t = 'n';
-                            cell.v = numValue;
-                        }
+                    if (R === range.s.r) {
+                        continue;
                     }
-                    // Format decimal numbers
-                    else if (decimalFields.includes(header)) {
-                        const numValue = parseFloat(value);
-                        if (!isNaN(numValue)) {
-                            cell.t = 'n';
-                            cell.v = numValue;
-                            cell.z = '#,##0.00'; // Format with 2 decimal places
-                        }
-                    }
-                    // Handle date columns
-                    else if (header === 'Date' && typeof value === 'string') {
-                        // Format date as YYYY-MM-DD
-                        const dateValue = new Date(value);
-                        if (!isNaN(dateValue.getTime())) {
+
+                    if (header === 'Date') {
+                        const dateValue = new Date(cell.v);
+                        if (!Number.isNaN(dateValue.getTime())) {
                             cell.t = 'd';
                             cell.v = dateValue;
                             cell.z = 'yyyy-mm-dd';
                         }
+                        continue;
                     }
-                    // Handle discount columns (dynamic fields)
-                    else if (header && typeof value === 'string' && !isNaN(parseFloat(value))) {
-                        const numValue = parseFloat(value);
-                        if (!isNaN(numValue)) {
-                            cell.t = 'n';
-                            cell.v = numValue;
-                            cell.z = '#,##0.00'; // Format as decimal for discount amounts
-                        }
+
+                    const numericValue = toNumeric(cell.v as any);
+                    if (Number.isNaN(numericValue)) {
+                        continue;
+                    }
+
+                    if (plainIntegerFieldSet.has(headerKey)) {
+                        cell.t = 'n';
+                        cell.v = Math.trunc(numericValue);
+                        cell.z = '0';
+                        continue;
+                    }
+
+                    if (integerFieldSet.has(headerKey)) {
+                        cell.t = 'n';
+                        cell.v = Math.trunc(numericValue);
+                        cell.z = '#,##0';
+                        continue;
+                    }
+
+                    if (decimalFieldSet.has(headerKey) || isNumericValue(cell.v)) {
+                        cell.t = 'n';
+                        cell.v = numericValue;
+                        cell.z = '#,##0.00';
+                        continue;
                     }
                 }
             }
@@ -287,8 +396,8 @@ export default function BirSummary() {
             
             const headers = getOrderedHeaders(dataToExport);
             // Prepare table data in exact header order
-            const tableData = dataToExport.map((row: any) => {
-                return headers.map((h) => (row[h] !== undefined && row[h] !== null) ? row[h] : '-');
+            const tableData = dataToExport.map((row: BirSummaryRow) => {
+                return headers.map((h) => formatValueForDisplay(h, row[h]));
             });
             
             // Generate the table using autoTable
@@ -379,7 +488,7 @@ export default function BirSummary() {
                                     </div>
                                 </div>
                                 <div className="rounded-md border">
-                                    <ScrollArea className="h-[calc(100vh-250px)] w-full">
+                                    <ScrollArea className="w-full max-h-[calc(100vh-200px)] overflow-auto">
                                         <Table>
                                         <TableHeader className="sticky-header">
                                             <TableRow>
@@ -399,10 +508,12 @@ export default function BirSummary() {
                                                     </TableCell>
                                                 </TableRow>
                                             ) : birSummaryData.length > 0 ? (
-                                                birSummaryData.map((row, rowIndex) => (
+                                                birSummaryData.map((row: BirSummaryRow, rowIndex: number) => (
                                                     <TableRow key={rowIndex}>
                                                         {headers.map((h, cellIndex) => (
-                                                            <TableCell key={cellIndex} className="whitespace-nowrap">{row[h] !== null && row[h] !== undefined ? row[h] : '-'}</TableCell>
+                                                            <TableCell key={cellIndex} className="whitespace-nowrap">
+                                                                {formatValueForDisplay(h, row[h])}
+                                                            </TableCell>
                                                         ))}
                                                     </TableRow>
                                                 ))

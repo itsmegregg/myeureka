@@ -43,8 +43,8 @@ export default function DateRangePickernew() {
         if (value && value.start && value.end) {
           // Convert back to JS Date for our store
           setDateRange({
-            from: new Date(value.start.toString()),
-            to: new Date(value.end.toString())
+            from: value.start.toDate(getLocalTimeZone()),
+            to: value.end.toDate(getLocalTimeZone())
           });
         }
       }}

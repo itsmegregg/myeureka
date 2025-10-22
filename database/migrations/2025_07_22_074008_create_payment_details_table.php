@@ -14,9 +14,9 @@ return new class extends Migration
         Schema::create('payment_details', function (Blueprint $table) {
             $table->id();
             $table->string('terminal_number')->index();
-            $table->string('si_number')->index();
+            $table->integer('si_number')->index();
             $table->string('payment_type')->index();
-            $table->string('amount');
+            $table->decimal('amount', 10, 2);
             $table->string('branch_name');
             $table->string('store_name');
             $table->timestamps();

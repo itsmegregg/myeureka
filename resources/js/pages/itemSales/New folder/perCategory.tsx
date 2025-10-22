@@ -95,14 +95,7 @@ export default function PerCategory() {
         }).format(value);
     };
     
-    // Determine view mode based on category selection
-    useEffect(() => {
-        if (selectedCategory && selectedCategory !== 'ALL' && categories.length > 0) {
-            setViewMode('chart');
-        } else {
-            setViewMode('table');
-        }
-    }, [selectedCategory, categories]);
+    // Fetch data from API
     const fetchAlldata = async () => {
         setIsFetching(true);
         setError(null);
@@ -163,7 +156,7 @@ export default function PerCategory() {
             excelData.push(['']);
             
             // Process each category
-            categories.forEach((category: CategoryProps, categoryIndex: number) => {
+            categories.forEach((category, categoryIndex) => {
                 // Add spacing between categories if not the first one
                 if (categoryIndex > 0) {
                     excelData.push(['']);
@@ -178,7 +171,7 @@ export default function PerCategory() {
                 excelData.push(['Product Code', 'Description', 'Quantity', 'Net Sales']);
                 
                 // Add products and their combo items
-                category.product.forEach((product: ProductProps) => {
+                category.product.forEach(product => {
                     excelData.push([
                         product.product_code,
                         product.description,
@@ -188,7 +181,7 @@ export default function PerCategory() {
                     
                     // Add combo items if any
                     if (product.combo_items && product.combo_items.length > 0) {
-                        product.combo_items.forEach((combo: ComboItemProps) => {
+                        product.combo_items.forEach(combo => {
                             excelData.push([
                                 `- ${combo.product_code}`,
                                 combo.description,
@@ -200,8 +193,8 @@ export default function PerCategory() {
                 });
                 
                 // Add category totals
-                const totalQuantity = category.product.reduce((acc: number, product: ProductProps) => acc + product.quantity, 0);
-                const totalNetSales = category.product.reduce((acc: number, product: ProductProps) => acc + product.net_sales, 0);
+                const totalQuantity = category.product.reduce((acc, product) => acc + product.quantity, 0);
+                const totalNetSales = category.product.reduce((acc, product) => acc + product.net_sales, 0);
                 excelData.push(['', 'Category Total', totalQuantity, `P${totalNetSales.toFixed(2)}`]);
             });
             
@@ -274,7 +267,7 @@ export default function PerCategory() {
             // Loop through each category and create a table
             let currentY = startY;
             
-            categories.forEach((category: CategoryProps, index: number) => {
+            categories.forEach((category, index) => {
                
                 if (index > 0) {
                
@@ -297,7 +290,7 @@ export default function PerCategory() {
                 const tableRows: any[][] = [];
                 
                 // Add products
-                category.product.forEach((product: ProductProps) => {
+                category.product.forEach(product => {
                     tableRows.push([
                         product.product_code,
                         product.description,
@@ -307,7 +300,7 @@ export default function PerCategory() {
                     
                     // Add combo items if any
                     if (product.combo_items && product.combo_items.length > 0) {
-                        product.combo_items.forEach((combo: ComboItemProps) => {
+                        product.combo_items.forEach(combo => {
                             tableRows.push([
                                 `- ${combo.product_code}`,
                                 combo.description,
@@ -319,8 +312,8 @@ export default function PerCategory() {
                 });
                 
                 // Add category totals
-                const totalQuantity = category.product.reduce((acc: number, product: ProductProps) => acc + product.quantity, 0);
-                const totalNetSales = category.product.reduce((acc: number, product: ProductProps) => acc + product.net_sales, 0);
+                const totalQuantity = category.product.reduce((acc, product) => acc + product.quantity, 0);
+                const totalNetSales = category.product.reduce((acc, product) => acc + product.net_sales, 0);
                 tableRows.push([
                     '',
                     'Category Total',
@@ -391,11 +384,9 @@ export default function PerCategory() {
                             <div className="flex flex-col gap-4 max-w-full overflow-hidden">
                                <TextHeader title="Item Sales - Per Category" />
                                <div className="flex flex-col md:flex-row lg:flex-row md:justify-between lg:justify-between gap-4">
-                                           <div className="flex items-end gap-2">
+                                           <div className="flex flex-wrap items-end gap-2">
                                           <BranchSelect />
-                                            <div className="w-auto">
-                                                <DateRangePickernew />
-                                            </div>
+                                            <DateRangePickernew />
                                             <CategorySelect />
                                             <Button
                                                 onClick={fetchAlldata}
@@ -480,29 +471,27 @@ export default function PerCategory() {
                                 ) : categories.length > 0 ? (
                                     viewMode === 'chart' ? (
                                         <div className="mt-4 rounded-md border p-4 bg-white shadow-sm">
-                                            {viewMode === 'chart' && (
-                                                <div className="mb-4 flex justify-center space-x-4">
-                                                    <Button
-                                                        size="sm"
-                                                        variant={chartType === 'quantity' ? "default" : "outline"}
-                                                        onClick={() => setChartType('quantity')}
-                                                    >
-                                                        By Quantity
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant={chartType === 'sales' ? "default" : "outline"}
-                                                        onClick={() => setChartType('sales')}
-                                                    >
-                                                        By Sales
-                                                    </Button>
-                                                </div>
-                                            )}
+                                            <div className="mb-4 flex justify-center space-x-4">
+                                                <Button
+                                                    size="sm"
+                                                    variant={chartType === 'quantity' ? "default" : "outline"}
+                                                    onClick={() => setChartType('quantity')}
+                                                >
+                                                    By Quantity
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant={chartType === 'sales' ? "default" : "outline"}
+                                                    onClick={() => setChartType('sales')}
+                                                >
+                                                    By Sales
+                                                </Button>
+                                            </div>
                                             <CategoryPieChart categories={categories} chartType={chartType} />
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 w-full px-0">
-                                            {categories.map((category: CategoryProps) => (
+                                            {categories.map(category => (
                                                 <Card key={category.category_code}>
                                                 <CardHeader className="p-4">
                                                     <CardTitle className="text-base sm:text-lg flex flex-col sm:flex-row sm:items-center gap-2">
@@ -524,7 +513,7 @@ export default function PerCategory() {
                                                                 </TableRow>
                                                             </TableHeader>
                                                             <TableBody>
-                                                                {category.product.map((product: ProductProps) => (
+                                                                {category.product.map((product) => (
                                                                     <React.Fragment key={product.product_code}>
                                                                         <TableRow>
                                                                             <TableCell className="font-medium truncate max-w-[60px] sm:max-w-full">{product.product_code}</TableCell>
@@ -532,7 +521,7 @@ export default function PerCategory() {
                                                                             <TableCell className="text-right">{product.quantity.toLocaleString()}</TableCell>
                                                                             <TableCell className="text-right text-nowrap">{formatCurrency(product.net_sales)}</TableCell>
                                                                         </TableRow>
-                                                                        {product.combo_items && product.combo_items.length > 0 && product.combo_items.map((combo: ComboItemProps) => (
+                                                                        {product.combo_items && product.combo_items.length > 0 && product.combo_items.map((combo) => (
                                                                             <TableRow key={`${product.product_code}-${combo.product_code}`} className="bg-muted/30">
                                                                                 <TableCell className="pl-4 text-xs truncate max-w-[60px] sm:max-w-full">- {combo.product_code}</TableCell>
                                                                                 <TableCell className="text-xs truncate max-w-[100px] sm:max-w-full">{combo.description}</TableCell>
@@ -545,10 +534,10 @@ export default function PerCategory() {
                                                                 <TableRow className="bg-muted/70 font-semibold">
                                                                     <TableCell colSpan={2}>Category Total</TableCell>
                                                                     <TableCell className="text-right">
-                                                                        {category.product.reduce((acc: number, product: ProductProps) => acc + product.quantity, 0).toLocaleString()}
+                                                                        {category.product.reduce((acc, product) => acc + product.quantity, 0).toLocaleString()}
                                                                     </TableCell>
                                                                     <TableCell className="text-right">
-                                                                        {formatCurrency(category.product.reduce((acc: number, product: ProductProps) => acc + product.net_sales, 0))}
+                                                                        {formatCurrency(category.product.reduce((acc, product) => acc + product.net_sales, 0))}
                                                                     </TableCell>
                                                                 </TableRow>
                                                             </TableBody>

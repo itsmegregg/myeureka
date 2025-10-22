@@ -15,6 +15,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\GovernmentDataController;
 use App\Http\Controllers\TimeBasedController;
+use App\Http\Controllers\Settings\BirSummaryProcessController;
 
 
 use App\Http\Controllers\BIRSummaryController;
@@ -74,10 +75,6 @@ Route::get('/sales/payment-details', [PaymentDetailsController::class, 'getPayme
 Route::get('/sales/hourly-report', [HourlyController::class, 'getHourlyData']);
 
 
-//bir detailed apis
-Route::get('/bir/detailed-report', [BIRDetailedController::class, 'index']);
-Route::get('/bir/detailed-report/export', [BIRDetailedController::class, 'export']);
-
 //bir summary apis
 Route::get('/bir/summary-report', [BIRSummaryController::class, 'getSummary']);
 
@@ -103,6 +100,8 @@ Route::get('/payment-list', [PaymentDetailsController::class, 'paymentList']);
 
 Route::post('/run-command', [App\Http\Controllers\API\UpdateCommandController::class, 'runCommand']);
 
+Route::post('/settings/bir-summary/process', BirSummaryProcessController::class);
+
 //receipt data
    Route::post('/receipt', [App\Http\Controllers\API\ReceiptController::class, 'store']);
 Route::post('/receipts/search-via-si-number', [App\Http\Controllers\API\ReceiptController::class, 'searchViaSiNumber']);
@@ -120,3 +119,5 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 
 Route::get('/orderTypeDate', [App\Http\Controllers\OrderTypeController::class, 'GetOrderType']);
 Route::get('/sales/time-based', [TimeBasedController::class, 'getTimeBasedReport']);
+
+Route::get('/bir/new-birData', [BIRDetailedController::class, 'newBIRDetailedTable']);

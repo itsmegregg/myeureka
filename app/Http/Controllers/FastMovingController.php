@@ -50,23 +50,23 @@ class FastMovingController extends Controller
                             'id.product_code',
                             DB::raw('SUM(CAST(id.qty AS NUMERIC)) AS total_quantity_sold')
                         )
-                        ->from('item_details', 'id')
+                        ->from('item_details as id')
                         ->join('header as h', function ($join) {
-                            $join->on('id.si_number', '=', 'h.si_number')
-                                 ->on('id.terminal_number', '=', 'h.terminal_number')
-                                 ->on('id.branch_name', '=', 'h.branch_name')
-                                 ->on('id.store_name', '=', 'h.store_name');
+                            $join->on(DB::raw('CAST(id.si_number AS NUMERIC)'), '=', DB::raw('CAST(h.si_number AS NUMERIC)'))
+                                 ->on(DB::raw('CAST(id.terminal_number AS NUMERIC)'), '=', DB::raw('CAST(h.terminal_number AS NUMERIC)'))
+                                 ->on(DB::raw('TRIM(UPPER(id.branch_name))'), '=', DB::raw('TRIM(UPPER(h.branch_name))'))
+                                 ->on(DB::raw('TRIM(UPPER(id.store_name))'), '=', DB::raw('TRIM(UPPER(h.store_name))'));
                         })
                         ->whereBetween(DB::raw('DATE(h.date)'), [$fromDate, $toDate])
-                        ->where('h.void_flag', 0)
-                        ->where('id.void_flag', 0);
+                        ->whereRaw("COALESCE(TRIM(h.void_flag), '0') = '0'")
+                        ->whereRaw("COALESCE(TRIM(id.void_flag), '0') = '0'");
 
-                    if ($branchName) {
-                        $query->where('h.branch_name', $branchName);
+                    if ($branchName && strtoupper($branchName) !== 'ALL') {
+                        $query->whereRaw('TRIM(UPPER(h.branch_name)) = ?', [strtoupper(trim($branchName))]);
                     }
 
-                    if ($storeName) {
-                        $query->where('h.store_name', $storeName);
+                    if ($storeName && strtoupper($storeName) !== 'ALL') {
+                        $query->whereRaw('TRIM(UPPER(h.store_name)) = ?', [strtoupper(trim($storeName))]);
                     }
 
                     $query->groupBy('id.product_code');

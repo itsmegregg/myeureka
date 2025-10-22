@@ -71,7 +71,7 @@ export default function PieChart({ data, viewByDate }: PieChartProps) {
                                     fontSize: '10px'
                                 },
                                 // Keep this responsive rule's format as percentage if desired for small screens
-                                format: '{point.percentage:.1f}%'
+                                format: '{point.percentage:.2f}%'
                             }
                         }
                     },
@@ -115,7 +115,7 @@ export default function PieChart({ data, viewByDate }: PieChartProps) {
                 // It will be overridden by plotOptions.pie.dataLabels for pie type charts
                 dataLabels: {
                     enabled: true,
-                    format: '{point.name}: {point.percentage:.1f}%', // This is generic
+                    format: '{point.name}: {point.percentage:.2f}%', // This is generic
                     style: {
                         fontWeight: 'normal',
                         textOutline: 'none'
@@ -132,7 +132,7 @@ export default function PieChart({ data, viewByDate }: PieChartProps) {
                     enabled: true,
                     // *** MODIFICATION HERE ***
                     // Format to show name, total discount (formatted), and percentage
-                    format: '{point.name}: <b>₱{point.y:,.2f}</b> ({point.percentage:.1f}%)',
+                    format: '{point.name}: <b>₱{point.y:,.2f}</b> ({point.percentage:.2f}%)',
                     // Adjust distance as needed. A positive distance places labels outside.
                     // A negative distance (like -30) places them inside.
                     // If you want outside, remove `distance` or set to a positive value (e.g., 20).
@@ -150,7 +150,7 @@ export default function PieChart({ data, viewByDate }: PieChartProps) {
             }
         },
         tooltip: {
-            pointFormat: '{series.name}: <b>₱{point.y:,.2f}</b> ({point.percentage:.1f}%)'
+            pointFormat: '{series.name}: <b>₱{point.y:,.2f}</b> ({point.percentage:.2f}%)'
         },
         credits: {
             enabled: false

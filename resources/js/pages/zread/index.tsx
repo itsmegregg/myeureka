@@ -10,7 +10,7 @@ import { useDateRange } from "@/store/useDateRange";
 import axios from "axios";
 import { Eye, FileText, File as FileIcon, Search, Info } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format as formatDate } from "date-fns";
+import { format as formatDateFns } from "date-fns";
 import { useStore } from "@/store/useStore";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -80,7 +80,7 @@ async function downloadPdf(item: ZreadItem, filename: string) {
 }
 
 function toYyyyDashMmDashDd(d: Date) {
-  return formatDate(d, "yyyy-MM-dd");
+  return formatDateFns(d, "yyyy-MM-dd");
 }
 
 // No longer needed as we store content in the database
@@ -141,15 +141,22 @@ export default function ZreadIndex() {
     setZreads([]);
     try {
       // Format dates to YYYY-MM-DD with proper type safety
-      const formatDate = (date: Date | string): string => {
-        const d = new Date(date);
-        return d.toISOString().split('T')[0];
+      const formatDateParam = (value: Date | string | null | undefined): string => {
+        if (!value) {
+          return formatDateFns(new Date(), "yyyy-MM-dd");
+        }
+
+        if (typeof value === "string") {
+          return value;
+        }
+
+        return formatDateFns(value, "yyyy-MM-dd");
       };
       
       const params = {
         branch_name: selectedBranch?.branch_name ?? 'ALL',
-        from_date: selectedDateRange.from ? formatDate(selectedDateRange.from) : '',
-        to_date: selectedDateRange.to ? formatDate(selectedDateRange.to) : formatDate(new Date()),
+        from_date: formatDateParam(selectedDateRange.from),
+        to_date: formatDateParam(selectedDateRange.to ?? new Date()),
         store_name: selectedStore ?? 'ALL',
       };
 

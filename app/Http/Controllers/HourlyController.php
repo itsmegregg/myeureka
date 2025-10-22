@@ -52,8 +52,8 @@ class HourlyController extends Controller
                 END as hour_range"),
                 \Illuminate\Support\Facades\DB::raw('COUNT(DISTINCT header.si_number) as no_trans'), // Count distinct SI numbers for transactions
                 \Illuminate\Support\Facades\DB::raw('SUM(CASE WHEN CAST(header.void_flag AS INTEGER) = 1 THEN 1 ELSE 0 END) as no_void'), // Using 'void_flag' column for voids (assuming 1 means voided)
-                \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(CAST(header.net_amount AS NUMERIC)), 0) as sales_value'), // Using 'net_amount' for total sales
-                \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(CAST(header.total_discount AS NUMERIC)), 0) as discount_amount') // Using 'total_discount' for total discount
+                \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(CASE WHEN CAST(header.void_flag AS INTEGER) = 1 THEN 0 ELSE CAST(header.net_amount AS NUMERIC) END), 0) as sales_value'), // Using 'net_amount' for total sales
+                \Illuminate\Support\Facades\DB::raw('COALESCE(SUM(CASE WHEN CAST(header.void_flag AS INTEGER) = 1 THEN 0 ELSE CAST(header.total_discount AS NUMERIC) END), 0) as discount_amount') // Using 'total_discount' for total discount
             )
             ->groupBy(
                 \Illuminate\Support\Facades\DB::raw('EXTRACT(HOUR FROM header.time)'),

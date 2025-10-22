@@ -31,21 +31,30 @@ class ItemDetailsController extends Controller
         'description' => 'required|string',
         'category_code' => 'required|string',
         'category_description' => 'required|string',
-        'qty' => 'required|string',
-        'net_total' => 'required|string',
-        'menu_price' => 'required|string',
+        'qty' => 'required|numeric',
+        'net_total' => 'required|numeric',
+        'menu_price' => 'required|numeric',
         'discount_code' => 'nullable|string',
-        'discount_amount' => 'nullable|string',
+        'discount_amount' => 'nullable|numeric',
         'combo_header' => 'nullable|string',
         'void_flag' => 'required|string',
-        'void_amount' => 'nullable|string',
-        'line_number' => 'required|integer',
+        'void_amount' => 'nullable|numeric',
+        'line_no' => 'required|numeric',
     ]);
+
+    // Cast to correct types
+    $validatedData['qty']             = (int)   $validatedData['qty'];
+    $validatedData['si_number']       = (int)   $validatedData['si_number'];
+    $validatedData['net_total']       = (float) $validatedData['net_total'];
+    $validatedData['menu_price']      = (float) $validatedData['menu_price'];
+    $validatedData['discount_amount'] = (float) ($validatedData['discount_amount'] ?? 0.00);
+    $validatedData['void_amount']     = (float) ($validatedData['void_amount'] ?? 0.00);
+    $validatedData['line_no']         = (int)   $validatedData['line_no'];
 
     try {
         \DB::beginTransaction();
-        
-        // Step 1: Check if category exists, if not, create it - process category first
+
+        // Step 1: Category
         $existingCategory = \App\Models\Category::firstOrCreate([
             'category_name' => $validatedData['category_description'],
             'store_name' => $validatedData['store_name'],
@@ -53,14 +62,8 @@ class ItemDetailsController extends Controller
             'category_code' => $validatedData['category_code'],
             'category_description' => $validatedData['category_description'],
         ]);
-        
-        if ($existingCategory->wasRecentlyCreated) {
-            Log::info('New category created: ' . $validatedData['category_code']);
-        } else {
-            Log::info('Existing category found: ' . $validatedData['category_code']);
-        }
-        
-        // Step 2: Check if product exists, if not, create it - process product after category
+
+        // Step 2: Product
         $existingProduct = \App\Models\Product::where('product_code', $validatedData['product_code'])->first();
         if (!$existingProduct) {
             \App\Models\Product::create([
@@ -71,64 +74,49 @@ class ItemDetailsController extends Controller
                 'branch_name' => $validatedData['branch_name'],
                 'store_name' => $validatedData['store_name'],
             ]);
-            Log::info('New product created: ' . $validatedData['product_code']);
         }
 
-        // Now process ItemDetails after category and product are handled
-        // Step 3: Check if record already exists with these key fields
+        // Step 3: ItemDetail
         $existingRecord = ItemDetail::where('branch_name', $validatedData['branch_name'])
             ->where('terminal_number', $validatedData['terminal_number'])
             ->where('si_number', $validatedData['si_number'])
-            ->where('combo_header', $validatedData['combo_header'])
+            ->where('line_no', $validatedData['line_no'])
             ->where('store_name', $validatedData['store_name'])
             ->where('product_code', $validatedData['product_code'])
-            ->where('line_number', $validatedData['line_number'])
             ->first();
 
         if ($existingRecord) {
-            // Update existing record
             $existingRecord->update($validatedData);
             \DB::commit();
             return response()->json([
                 'data' => $existingRecord,
                 'message' => 'Item details updated successfully',
-                'categoryCreated' => !$existingCategory,
-                'productCreated' => !$existingProduct
+                'categoryCreated' => !$existingCategory->wasRecentlyCreated,
+                'productCreated' => !$existingProduct,
             ], 200);
         } else {
-            // Create new record
             $itemDetail = ItemDetail::create($validatedData);
             \DB::commit();
             return response()->json([
                 'data' => $itemDetail,
                 'message' => 'Item details created successfully',
-                'categoryCreated' => !$existingCategory,
-                'productCreated' => !$existingProduct
+                'categoryCreated' => !$existingCategory->wasRecentlyCreated,
+                'productCreated' => !$existingProduct,
             ], 201);
         }
     } catch (\Exception $e) {
         \DB::rollBack();
-        
-        // Capture the full exception details for debugging
-        $errorDetail = [
+        Log::error('Item Details API Error: ', [
             'message' => $e->getMessage(),
             'file' => $e->getFile(),
             'line' => $e->getLine(),
             'trace' => $e->getTraceAsString(),
-        ];
-        
-        // Log comprehensive error information
-        Log::error('Item Details API Error: ', $errorDetail);
-        
-        // Return detailed error information for debugging
+            'request_data' => $request->all(),
+        ]);
         return response()->json([
             'message' => 'An error occurred while processing your request',
             'error' => $e->getMessage(),
-            'details' => $errorDetail,
-            'request_data' => $request->all() // Include the request data for context
         ], 500);
     }
 }
-
-   
 }

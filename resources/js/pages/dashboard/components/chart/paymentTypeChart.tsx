@@ -62,12 +62,17 @@ const PaymentTypeChart: React.FC<Props> = ({ data, loading, error }) => {
     },
     tooltip: {
       headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
-      pointFormat:
-        '<tr><td style="color:black;padding:0">{series.name}: </td>' +
-        '<td style="padding:0"><b>{point.y:.2f} PHP</b></td></tr>',
+      pointFormatter: function() {
+        const value = this.y || 0;
+        return '<tr><td style="color:black;padding:0">' + this.series.name + ': </td>' +
+               '<td style="padding:0"><b>' + Highcharts.numberFormat(value, 2, '.', ',') + ' PHP</b></td></tr>';
+      },
       footerFormat: '</table>',
       shared: true,
       useHTML: true,
+    },
+    lang: {
+      thousandsSep: ','
     },
     plotOptions: {
       pie: {
@@ -75,7 +80,7 @@ const PaymentTypeChart: React.FC<Props> = ({ data, loading, error }) => {
         cursor: 'pointer',
         dataLabels: {
           enabled: true,
-          format: '<b>{point.name}</b>: {point.percentage:.1f} %',
+          format: '<b>{point.name}</b>: {point.percentage:.2f} %',
           style: {
             color: 'black',
           },
@@ -87,7 +92,7 @@ const PaymentTypeChart: React.FC<Props> = ({ data, loading, error }) => {
       labelFormatter: function () {
         const index = this.index !== undefined ? this.index : 0;
         const value = values[index] || 0;
-        return `${this.name}: P${value}`;
+        return `${this.name}: P${Highcharts.numberFormat(value, 2, '.', ',')}`;
       },
       itemStyle: {
         color: 'var(--color-secondary-foreground)',

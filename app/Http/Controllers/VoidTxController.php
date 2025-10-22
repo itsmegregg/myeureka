@@ -36,10 +36,10 @@ class VoidTxController extends Controller
     
             $query = DB::table('header AS h')
                 ->join('item_details AS id', function ($join) {
-                    $join->on('h.si_number', '=', 'id.si_number')
-                         ->on('h.terminal_number', '=', 'id.terminal_number')
-                         ->on('h.branch_name', '=', 'id.branch_name')
-                         ->on('h.store_name', '=', 'id.store_name');
+                    $join->on(DB::raw('CAST(h.si_number AS NUMERIC)'), '=', DB::raw('CAST(id.si_number AS NUMERIC)'))
+                         ->on(DB::raw('CAST(h.terminal_number AS NUMERIC)'), '=', DB::raw('CAST(id.terminal_number AS NUMERIC)'))
+                         ->on(DB::raw('TRIM(UPPER(h.branch_name))'), '=', DB::raw('TRIM(UPPER(id.branch_name))'))
+                         ->on(DB::raw('TRIM(UPPER(h.store_name))'), '=', DB::raw('TRIM(UPPER(id.store_name))'));
                 })
                 ->select(
                     'h.store_name',
@@ -54,17 +54,18 @@ class VoidTxController extends Controller
                     'h.void_reason'
                 )
                 ->whereBetween(DB::raw('DATE(h.date)'), [$request->from_date, $request->to_date])
-                ->where('h.void_flag', 1);
-    
+                ->whereRaw("NULLIF(TRIM(h.void_flag), '') IS NOT NULL")
+                ->whereRaw("TRIM(h.void_flag) <> '0'");
+
             // Add conditions only if they're not 'ALL'
             if ($request->filled('branch_name') && strtoupper($request->branch_name) !== 'ALL') {
-                $query->where('h.branch_name', trim($request->branch_name));
+                $query->whereRaw('TRIM(UPPER(h.branch_name)) = ?', [strtoupper(trim($request->branch_name))]);
             }
             if ($request->filled('store_name') && strtoupper($request->store_name) !== 'ALL') {
-                $query->where('h.store_name', trim($request->store_name));
+                $query->whereRaw('TRIM(UPPER(h.store_name)) = ?', [strtoupper(trim($request->store_name))]);
             }
             if ($request->filled('cashier_name') && strtoupper($request->cashier_name) !== 'ALL') {
-                $query->where('h.cashier_name', trim($request->cashier_name));
+                $query->whereRaw('TRIM(UPPER(h.cashier_name)) = ?', [strtoupper(trim($request->cashier_name))]);
             }
     
             $voidTransactions = $query->groupBy(

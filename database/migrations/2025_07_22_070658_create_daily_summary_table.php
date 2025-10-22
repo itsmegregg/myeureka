@@ -15,11 +15,11 @@ return new class extends Migration
             $table->id();
             $table->string('terminal_no')->index();
             $table->date('date')->index();
-            $table->string('si_from')->nullable();
-            $table->string('si_to')->nullable();
-            $table->string('new_grand_total')->nullable();
-            $table->string('old_grand_total')->nullable();
-            $table->string('z_read_counter')->nullable();
+            $table->integer('si_from')->nullable();
+            $table->integer('si_to')->nullable();
+            $table->decimal('new_grand_total', 10, 2)->nullable();
+            $table->decimal('old_grand_total', 10, 2)->nullable();
+            $table->integer('z_read_counter')->nullable();
             $table->string('branch_name');
             $table->string('store_name');
             $table->timestamps();

@@ -39,21 +39,17 @@ class DashboardController extends Controller
             // Calculate total sales
             $totals = DB::table('header as h')
                 ->join('payment_details as pd', function ($join) {
-                    $join->on('h.si_number', '=', 'pd.si_number')
+                    $join->on(DB::raw('h.si_number::integer'), '=', 'pd.si_number')
                          ->on('h.branch_name', '=', 'pd.branch_name')
                          ->on('h.store_name', '=', 'pd.store_name');
                 })
                 ->select(
-                    DB::raw('SUM(CAST(pd.amount AS NUMERIC)) as total_amount')
+                    DB::raw('SUM(pd.amount) as total_amount')
                 )
                 ->whereBetween('h.date', [$startDate, $endDate])
-                ->when($concept_name !== 'ALL' && $concept_name !== null, function ($query) use ($concept_name) {
-                    $query->where('h.store_name', $concept_name);
-                })
-                ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
-                    $query->where('h.branch_name', $branch_name);
-                })
-                ->whereNull('h.void_reason')
+                ->when($concept_name !== 'ALL', fn($q) => $q->where('h.store_name', $concept_name))
+                ->when($branch_name !== 'ALL', fn($q) => $q->where('h.branch_name', $branch_name))
+                ->where('h.void_flag', '0')
                 ->first();
                 
             // Get guest count with daily breakdown using GROUPING SETS
@@ -69,7 +65,7 @@ class DashboardController extends Controller
                 ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
                     $query->where('branch_name', $branch_name);
                 })
-                ->whereNull('void_reason')
+                ->where('void_flag', '0')
                 ->groupByRaw('GROUPING SETS (date, ())')
                 ->orderBy('day')
                 ->get();
@@ -103,7 +99,7 @@ class DashboardController extends Controller
                 ->when($concept_name !== 'ALL' && $concept_name !== null, function ($query) use ($concept_name) {
                     $query->where('store_name', $concept_name);
                 })
-                ->whereNull('void_reason')
+                ->where('void_flag', '0')
                 ->first();
             
             $totalDaysForSales = $daysQuery->total_days ?? 0;
@@ -127,7 +123,9 @@ class DashboardController extends Controller
             if ($concept_name !== 'ALL' && $concept_name !== null) {
                 $averageTxQuery->where('store_name', $concept_name);
             }
-            
+
+            $averageTxQuery->where('void_flag', '0');
+
             $txData = $averageTxQuery->first();
             $totalTransactions = $txData->total_transactions ?? 0;
             $totalDays = $txData->total_days ?? 0;
@@ -136,19 +134,25 @@ class DashboardController extends Controller
             // Format the month string
             $formattedMonth = \Carbon\Carbon::createFromFormat('Y-m', $month)->format('F Y');
             
-            // Get daily sales data
-            $dailySalesQuery = Header::query()
+            // Get daily sales data from payment details amounts
+            $dailySalesQuery = PaymentDetail::query()
+                ->join('header', function ($join) {
+                    $join->on(DB::raw('header.si_number::integer'), '=', 'payment_details.si_number')
+                        ->on('payment_details.terminal_number', '=', 'header.terminal_number')
+                        ->on('payment_details.branch_name', '=', 'header.branch_name');
+                })
                 ->select(
                     'header.date',
-                    DB::raw('TO_CHAR(header.date, \'DD Mon\') as date_formatted'),
-                    DB::raw('SUM(CAST(header.net_amount AS NUMERIC) + CAST(header.service_charge AS NUMERIC)) as total_sales')
+                    DB::raw("TO_CHAR(header.date, 'DD Mon') as date_formatted")
                 )
+                ->selectRaw('SUM(CAST(payment_details.amount AS NUMERIC)) as total_sales')
                 ->whereBetween('header.date', [$startDate, $endDate])
+                ->where('header.void_flag', '0')
                 ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
-                    $query->where('header.branch_name', $branch_name);
+                    $query->where('payment_details.branch_name', $branch_name);
                 })
                 ->when($concept_name !== 'ALL' && $concept_name !== null, function ($query) use ($concept_name) {
-                    $query->where('header.store_name', $concept_name);
+                    $query->where('payment_details.store_name', $concept_name);
                 })
                 ->groupBy('header.date')
                 ->orderBy('header.date')
@@ -157,20 +161,17 @@ class DashboardController extends Controller
             // Get payment type data
             $paymentTypeQuery = PaymentDetail::query()
                 ->join('header', function ($join) {
-                    $join->on('payment_details.si_number', '=', 'header.si_number')
+                    $join->on(DB::raw('header.si_number::integer'), '=', 'payment_details.si_number')
                          ->on('payment_details.branch_name', '=', 'header.branch_name');
                 })
                 ->select(
                     'payment_details.payment_type',
-                    DB::raw('SUM(CAST(payment_details.amount AS NUMERIC)) as amount')
+                    DB::raw('SUM(payment_details.amount) as amount')
                 )
                 ->whereBetween('header.date', [$startDate, $endDate])
-                ->when($branch_name !== 'ALL' && $branch_name !== null, function ($query) use ($branch_name) {
-                    $query->where('payment_details.branch_name', $branch_name);
-                })
-                ->when($concept_name !== 'ALL' && $concept_name !== null, function ($query) use ($concept_name) {
-                    $query->where('payment_details.store_name', $concept_name);
-                })
+                ->when($branch_name !== 'ALL', fn($q) => $q->where('payment_details.branch_name', $branch_name))
+                ->when($concept_name !== 'ALL', fn($q) => $q->where('payment_details.store_name', $concept_name))
+                ->where('header.void_flag', '0')
                 ->groupBy('payment_details.payment_type')
                 ->orderBy('payment_details.payment_type')
                 ->get();

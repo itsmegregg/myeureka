@@ -15,12 +15,15 @@ return new class extends Migration
             $table->id();
             $table->date('date')->index();
             $table->string('branch_name')->index();
-            $table->string('file_path');
+            $table->text('file_content')->nullable();
+            $table->string('file_name')->nullable();
+            $table->string('mime_type', 100)->default('text/plain');
             $table->timestamps();
 
-            
-            $table->foreign('branch_name')->references('branch_name')->on('branches')->onDelete('cascade');
-     
+            $table->foreign('branch_name')
+                  ->references('branch_name')
+                  ->on('branches')
+                  ->onDelete('cascade');
         });
     }
 

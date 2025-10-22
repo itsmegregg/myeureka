@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 
@@ -25,117 +26,7 @@ class BIRSummaryController extends Controller
                 ], 422);
             }
 
-            $baseQuery = DB::table('daily_summary as ds')
-                ->join('header as h', function ($join) {
-                    $join->on('ds.branch_name', '=', 'h.branch_name')
-                        ->on('ds.store_name', '=', 'h.store_name')
-                        ->on('ds.date', '=', 'h.date')
-                        ->whereRaw('h.si_number >= ds.si_from AND h.si_number <= ds.si_to');
-                })
-                ->join('item_details as id', function ($join) {
-                    $join->on('h.si_number', '=', 'id.si_number')
-                        ->on('h.branch_name', '=', 'id.branch_name')
-                        ->on('h.store_name', '=', 'id.store_name');
-                })
-                ->whereBetween('ds.date', [$request->from_date, $request->to_date]);
-
-            if ($request->branch_name && strtoupper($request->branch_name) !== 'ALL') {
-                $baseQuery->where('ds.branch_name', $request->branch_name);
-            }
-            if ($request->store_name && strtoupper($request->store_name) !== 'ALL') {
-                $baseQuery->where('ds.store_name', $request->store_name);
-            }
-
-            $discountCodes = (clone $baseQuery)
-                ->select('id.discount_code')
-                ->distinct()
-                ->pluck('discount_code')
-                ->filter(function($code){ return !is_null($code) && $code !== ''; })
-                ->values();
-
-            // Fetch distinct payment types using header join to respect date/branch/store filters
-            $paymentTypes = DB::table('payment_details as pd')
-                ->join('header as h2', function($join){
-                    $join->on('h2.si_number', '=', 'pd.si_number')
-                        ->on('h2.branch_name', '=', 'pd.branch_name')
-                        ->on('h2.store_name', '=', 'pd.store_name');
-                })
-                ->whereBetween('h2.date', [$request->from_date, $request->to_date])
-                ->when($request->branch_name && strtoupper($request->branch_name) !== 'ALL', function($q) use ($request){
-                    $q->where('h2.branch_name', $request->branch_name);
-                })
-                ->when($request->store_name && strtoupper($request->store_name) !== 'ALL', function($q) use ($request){
-                    $q->where('h2.store_name', $request->store_name);
-                })
-                ->select('pd.payment_type')
-                ->distinct()
-                ->pluck('payment_type')
-                ->filter(function($t){ return !is_null($t) && $t !== ''; })
-                ->values();
-
-            $selects = [
-                DB::raw('ds.branch_name AS "Branch"'),
-                DB::raw('ds.store_name AS "Concept"'),
-                DB::raw('ds.date AS "Date"'),
-                DB::raw('ds.z_read_counter AS "Z Counter"'),
-                DB::raw('ds.si_from AS "SI First"'),
-                DB::raw('ds.si_to AS "SI Last"'),
-                DB::raw('ds.old_grand_total AS "Beginning"'),
-                DB::raw('ds.new_grand_total AS "Ending"'),
-                DB::raw('CAST(SUM(CAST(h.net_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "Net Amount"'),
-                DB::raw('CAST(SUM(CAST(h.service_charge AS NUMERIC)) AS NUMERIC(10, 2)) AS "Service charge"'),
-                DB::raw('CAST(SUM(CAST(h.delivery_charge AS NUMERIC)) AS NUMERIC(10, 2)) AS "Delivery Charge"'),
-                DB::raw('CAST(SUM(CAST(h.guest_count AS NUMERIC)) AS NUMERIC(10, 2)) AS "Total No of Guest"'),
-            ];
-
-            foreach ($discountCodes as $code) {
-                $alias = strtoupper($code);
-                $alias = str_replace('"', '""', $alias);
-                $codeSql = str_replace("'", "''", $code);
-                $selects[] = DB::raw(
-                    "CAST(SUM(CASE WHEN id.discount_code = '".$codeSql."' THEN CAST(id.discount_amount AS NUMERIC) ELSE 0::NUMERIC END) AS NUMERIC(10, 2)) AS \"".$alias."\""
-                );
-            }
-
-            // Add dynamic payment type columns using scalar subqueries to avoid row multiplication
-            foreach ($paymentTypes as $ptype) {
-                $alias = strtoupper($ptype);
-                $alias = str_replace('"', '""', $alias);
-                $ptypeSql = str_replace("'", "''", $ptype);
-                $selects[] = DB::raw(
-                    "(SELECT CAST(SUM(CAST(pd.amount AS NUMERIC)) AS NUMERIC(10, 2))\n                      FROM payment_details pd\n                      JOIN header h2 ON h2.si_number = pd.si_number\n                                   AND h2.branch_name = pd.branch_name\n                                   AND h2.store_name = pd.store_name\n                      WHERE h2.branch_name = ds.branch_name\n                        AND h2.store_name = ds.store_name\n                        AND h2.date = ds.date\n                        AND h2.si_number >= ds.si_from\n                        AND h2.si_number <= ds.si_to\n                        AND pd.payment_type = '".$ptypeSql."') AS \"".$alias."\""
-                );
-            }
-
-            $selects = array_merge($selects, [
-                DB::raw("NULL AS \"Returns\""),
-                DB::raw('CAST(SUM(CAST(id.void_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "Voids"'),
-                DB::raw('CAST(SUM(CAST(h.gross_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "Gross"'),
-                DB::raw('CAST(SUM(CAST(h.vatable_sales AS NUMERIC)) AS NUMERIC(10, 2)) AS "Vatable"'),
-                DB::raw('CAST(SUM(CAST(h.vat_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "VAT Amount"'),
-                DB::raw('CAST(SUM(CAST(h.vat_exempt_sales AS NUMERIC)) AS NUMERIC(10, 2)) AS "VAT Exempt"'),
-                DB::raw('CAST(SUM(CAST(h.zero_rated_sales AS NUMERIC)) AS NUMERIC(10, 2)) AS "Zero Rated"'),
-                DB::raw('CAST(SUM(CAST(h.less_vat AS NUMERIC)) AS NUMERIC(10, 2)) AS "Less VAT"'),
-            ]);
-
-            $query = $baseQuery->select($selects);
-
-            $query->groupBy(
-                'ds.id',
-                'ds.branch_name',
-                'ds.store_name',
-                'ds.date',
-                'ds.z_read_counter',
-                'ds.si_from',
-                'ds.si_to',
-                'ds.old_grand_total',
-                'ds.new_grand_total'
-            )
-            ->orderBy('ds.date')
-            ->orderBy('ds.branch_name')
-            ->orderBy('ds.store_name');
-
-            $summaryData = $query->get();
+            $summaryData = $this->fetchSummary($request);
 
             return response()->json([
                 'status' => 'success',
@@ -169,98 +60,7 @@ class BIRSummaryController extends Controller
                 ], 422);
             }
 
-            $baseQuery = DB::table('daily_summary as ds')
-                ->join('header as h', function ($join) {
-                    $join->on('ds.branch_name', '=', 'h.branch_name')
-                        ->on('ds.store_name', '=', 'h.store_name')
-                        ->on('ds.date', '=', 'h.date')
-                        ->whereRaw('h.si_number >= ds.si_from AND h.si_number <= ds.si_to');
-                })
-                ->join('item_details as id', function ($join) {
-                    $join->on('h.si_number', '=', 'id.si_number')
-                        ->on('h.branch_name', '=', 'id.branch_name')
-                        ->on('h.store_name', '=', 'id.store_name');
-                })
-                ->whereBetween('ds.date', [$request->from_date, $request->to_date]);
-
-            if ($request->branch_name && strtoupper($request->branch_name) !== 'ALL') {
-                $baseQuery->where('ds.branch_name', $request->branch_name);
-            }
-            if ($request->store_name && strtoupper($request->store_name) !== 'ALL') {
-                $baseQuery->where('ds.store_name', $request->store_name);
-            }
-
-            $discountCodes = (clone $baseQuery)
-                ->select('id.discount_code')
-                ->distinct()
-                ->pluck('discount_code')
-                ->filter(function($code){ return !is_null($code) && $code !== ''; })
-                ->values();
-
-            // Build dynamic select list for export
-            $selects = [
-                DB::raw('ds.branch_name AS "Branch"'),
-                DB::raw('ds.store_name AS "Concept"'),
-                DB::raw('ds.date AS "Date"'),
-                DB::raw('ds.z_read_counter AS "Z Counter"'),
-                DB::raw('ds.si_from AS "SI First"'),
-                DB::raw('ds.si_to AS "SI Last"'),
-                DB::raw('ds.old_grand_total AS "Beginning"'),
-                DB::raw('ds.new_grand_total AS "Ending"'),
-                DB::raw('CAST(SUM(CAST(h.net_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "Net Amount"'),
-                DB::raw('CAST(SUM(CAST(h.service_charge AS NUMERIC)) AS NUMERIC(10, 2)) AS "Service charge"'),
-                DB::raw('CAST(SUM(CAST(h.delivery_charge AS NUMERIC)) AS NUMERIC(10, 2)) AS "Delivery Charge"'),
-                DB::raw('CAST(SUM(CAST(h.guest_count AS NUMERIC)) AS NUMERIC(10, 2)) AS "Total No of Guest"'),
-            ];
-
-            foreach ($discountCodes as $code) {
-                $alias = strtoupper($code);
-                $alias = str_replace('"', '""', $alias); // escape in alias
-                $codeSql = str_replace("'", "''", $code); // escape literal
-                $selects[] = DB::raw(
-                    "CAST(SUM(CASE WHEN id.discount_code = '".$codeSql."' THEN CAST(id.discount_amount AS NUMERIC) ELSE 0::NUMERIC END) AS NUMERIC(10, 2)) AS \"".$alias."\""
-                );
-            }
-
-            // Append dynamic payment type columns via scalar subqueries
-            foreach ($paymentTypes as $ptype) {
-                $alias = strtoupper($ptype);
-                $alias = str_replace('"', '""', $alias);
-                $ptypeSql = str_replace("'", "''", $ptype);
-                $selects[] = DB::raw(
-                    "(SELECT CAST(SUM(CAST(pd.amount AS NUMERIC)) AS NUMERIC(10, 2))\n                      FROM payment_details pd\n                      JOIN header h2 ON h2.si_number = pd.si_number\n                                   AND h2.branch_name = pd.branch_name\n                                   AND h2.store_name = pd.store_name\n                      WHERE h2.branch_name = ds.branch_name\n                        AND h2.store_name = ds.store_name\n                        AND h2.date = ds.date\n                        AND h2.si_number >= ds.si_from\n                        AND h2.si_number <= ds.si_to\n                        AND pd.payment_type = '".$ptypeSql."') AS \"".$alias."\""
-                );
-            }
-
-            $selects = array_merge($selects, [
-                DB::raw("NULL AS \"Returns\""),
-                DB::raw('CAST(SUM(CAST(id.void_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "Voids"'),
-                DB::raw('CAST(SUM(CAST(h.gross_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "Gross"'),
-                DB::raw('CAST(SUM(CAST(h.vatable_sales AS NUMERIC)) AS NUMERIC(10, 2)) AS "Vatable"'),
-                DB::raw('CAST(SUM(CAST(h.vat_amount AS NUMERIC)) AS NUMERIC(10, 2)) AS "VAT Amount"'),
-                DB::raw('CAST(SUM(CAST(h.vat_exempt_sales AS NUMERIC)) AS NUMERIC(10, 2)) AS "VAT Exempt"'),
-                DB::raw('CAST(SUM(CAST(h.zero_rated_sales AS NUMERIC)) AS NUMERIC(10, 2)) AS "Zero Rated"'),
-                DB::raw('CAST(SUM(CAST(h.less_vat AS NUMERIC)) AS NUMERIC(10, 2)) AS "Less VAT"'),
-            ]);
-
-            $query = $baseQuery->select($selects);
-
-            $query->groupBy(
-                'ds.id',
-                'ds.branch_name',
-                'ds.store_name',
-                'ds.date',
-                'ds.z_read_counter',
-                'ds.si_from',
-                'ds.si_to',
-                'ds.old_grand_total',
-                'ds.new_grand_total'
-            )
-            ->orderBy('ds.date')
-            ->orderBy('ds.branch_name')
-            ->orderBy('ds.store_name');
-
-            $summaryData = $query->get();
+            $summaryData = $this->fetchSummary($request, true);
 
             return response()->json([
                 'status' => 'success',
@@ -274,5 +74,92 @@ class BIRSummaryController extends Controller
                 'error' => $th->getMessage()
             ], 500);
         }
+    }
+
+    private function fetchSummary(Request $request, bool $forExport = false)
+    {
+        $fromDate = Carbon::createFromFormat('Y-m-d', $request->from_date)->startOfDay();
+        $toDate = Carbon::createFromFormat('Y-m-d', $request->to_date)->endOfDay();
+
+        $query = DB::table('bir_daily_metrics')
+            ->whereBetween('business_date', [$fromDate, $toDate]);
+
+        if ($request->branch_name && strtoupper($request->branch_name) !== 'ALL') {
+            $query->where('branch_name', $request->branch_name);
+        }
+
+        if ($request->store_name && strtoupper($request->store_name) !== 'ALL') {
+            $query->where('store_name', $request->store_name);
+        }
+
+        $rows = $query
+            ->orderBy('business_date')
+            ->orderBy('branch_name')
+            ->orderBy('store_name')
+            ->orderBy('terminal_no')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return collect();
+        }
+
+        return $rows->map(function ($row) use ($forExport) {
+            $discounts = $this->decodeBreakdown($row->discount_breakdown);
+            $payments = $this->decodeBreakdown($row->payment_breakdown);
+
+            $base = [
+                'Branch' => $row->branch_name,
+                'Concept' => $row->store_name,
+                'Date' => $row->business_date,
+                'Z Counter' => $row->z_read_counter,
+                'SI First' => $row->si_from,
+                'SI Last' => $row->si_to,
+                'Beginning' => $row->beginning,
+                'Ending' => $row->ending,
+                'Net Amount' => $row->net_amount,
+                'Service charge' => $row->service_charge,
+                'Total Sales' => (float) ($row->net_amount ?? 0) + (float) ($row->service_charge ?? 0),
+                'Delivery Charge' => $row->delivery_charge,
+                'Total No of Guest' => $row->total_guests,
+                'Voids' => $row->void_amount,
+                'Gross' => $row->gross_amount,
+                'Vatable' => $row->vatable,
+                'VAT Amount' => $row->vat_amount,
+                'VAT Exempt' => $row->vat_exempt,
+                'Zero Rated' => $row->zero_rated,
+                'Less VAT' => $row->less_vat,
+            ];
+
+            $dynamic = [];
+
+            if (!empty($discounts)) {
+                foreach ($discounts as $code => $amount) {
+                    $dynamic[$code] = $amount;
+                }
+            }
+
+            if (!empty($payments)) {
+                foreach ($payments as $type => $amount) {
+                    $dynamic[$type] = $amount;
+                }
+            }
+
+            return array_merge($base, $dynamic);
+        });
+    }
+
+    private function decodeBreakdown(?string $payload): array
+    {
+        if (!$payload) {
+            return [];
+        }
+
+        $decoded = json_decode($payload, true);
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        return $decoded;
     }
 }

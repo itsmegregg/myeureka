@@ -33,23 +33,23 @@ class CashierController extends Controller
             $salesQuery = DB::table('header as h')
                 ->leftJoin(DB::raw('(
                     SELECT
-                        id.si_number,
-                        id.terminal_number,
-                        id.branch_name,
-                        id.store_name,
+                        CAST(id.si_number AS NUMERIC) AS si_number,
+                        CAST(id.terminal_number AS NUMERIC) AS terminal_number,
+                        TRIM(UPPER(id.branch_name)) AS branch_name,
+                        TRIM(UPPER(id.store_name)) AS store_name,
                         SUM(CAST(id.void_amount AS NUMERIC)) AS total_void_amount
                     FROM
                         item_details AS id
                     GROUP BY
-                        id.si_number,
-                        id.terminal_number,
-                        id.branch_name,
-                        id.store_name
+                        CAST(id.si_number AS NUMERIC),
+                        CAST(id.terminal_number AS NUMERIC),
+                        TRIM(UPPER(id.branch_name)),
+                        TRIM(UPPER(id.store_name))
                 ) AS tis'), function($join) {
-                    $join->on('h.si_number', '=', 'tis.si_number')
-                        ->on('h.terminal_number', '=', 'tis.terminal_number')
-                        ->on('h.branch_name', '=', 'tis.branch_name')
-                        ->on('h.store_name', '=', 'tis.store_name');
+                    $join->on(DB::raw('CAST(h.si_number AS NUMERIC)'), '=', 'tis.si_number')
+                        ->on(DB::raw('CAST(h.terminal_number AS NUMERIC)'), '=', 'tis.terminal_number')
+                        ->on(DB::raw('TRIM(UPPER(h.branch_name))'), '=', 'tis.branch_name')
+                        ->on(DB::raw('TRIM(UPPER(h.store_name))'), '=', 'tis.store_name');
                 })
                 ->select(
                     'h.branch_name',
@@ -68,15 +68,15 @@ class CashierController extends Controller
             
             // Add filters for branch_name and store_name if provided
             if ($request->has('branch_name') && $request->branch_name !== 'ALL') {
-                $salesQuery->where('h.branch_name', $request->branch_name);
+                $salesQuery->whereRaw('TRIM(UPPER(h.branch_name)) = ?', [strtoupper(trim($request->branch_name))]);
             }
 
             if ($request->has('store_name') && $request->store_name !== 'ALL') {
-                $salesQuery->where('h.store_name', $request->store_name);
+                $salesQuery->whereRaw('TRIM(UPPER(h.store_name)) = ?', [strtoupper(trim($request->store_name))]);
             }
 
             if ($cashierName && $cashierName !== 'ALL') {
-                $salesQuery->where('h.cashier_name', $cashierName);
+                $salesQuery->whereRaw('TRIM(UPPER(h.cashier_name)) = ?', [strtoupper(trim($cashierName))]);
             }
             
             // Group by the required fields
@@ -99,10 +99,10 @@ class CashierController extends Controller
             // Get payment data grouped by branch, store, date, terminal, cashier, payment_type
             $paymentData = DB::table('header as h')
                 ->join('payment_details as pd', function($join) {
-                    $join->on('h.si_number', '=', 'pd.si_number')
-                        ->on('h.terminal_number', '=', 'pd.terminal_number')
-                        ->on('h.branch_name', '=', 'pd.branch_name')
-                        ->on('h.store_name', '=', 'pd.store_name');
+                    $join->on(DB::raw('CAST(h.si_number AS NUMERIC)'), '=', DB::raw('CAST(pd.si_number AS NUMERIC)'))
+                        ->on(DB::raw('CAST(h.terminal_number AS NUMERIC)'), '=', DB::raw('CAST(pd.terminal_number AS NUMERIC)'))
+                        ->on(DB::raw('TRIM(UPPER(h.branch_name))'), '=', DB::raw('TRIM(UPPER(pd.branch_name))'))
+                        ->on(DB::raw('TRIM(UPPER(h.store_name))'), '=', DB::raw('TRIM(UPPER(pd.store_name))'));
                 })
                 ->select(
                     'h.branch_name',
@@ -111,7 +111,7 @@ class CashierController extends Controller
                     'h.terminal_number',
                     'h.cashier_name',
                     'pd.payment_type',
-                    DB::raw('SUM(CAST(pd.amount AS NUMERIC)) as total_amount')
+                    DB::raw('SUM(pd.amount) as total_amount')
                 )
                 ->whereBetween(DB::raw('DATE(h.date)'), [$request->from_date, $request->to_date]);
             

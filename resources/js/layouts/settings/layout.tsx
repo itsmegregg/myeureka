@@ -14,15 +14,16 @@ const sidebarNavItems: NavItem[] = [
         icon: null,
     },
     {
+        title: 'Process BIR Summary',
+        href: '/settings/process-bir-summary',
+        icon: null,
+    },
+    {
         title: 'Password',
         href: '/settings/password',
         icon: null,
     },
-    {
-        title: 'Appearance',
-        href: '/settings/appearance',
-        icon: null,
-    },
+
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {

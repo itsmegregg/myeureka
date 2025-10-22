@@ -16,12 +16,12 @@ return new class extends Migration
             $table->string('branch_name');
             $table->string('store_name');
             $table->date('date')->index();
-            $table->string('si_number')->index();
+            $table->integer('si_number')->index();
             $table->string('id_type')->nullable();
             $table->string('id_no')->nullable();
             $table->string('name')->nullable();
-            $table->string('gross_amount');
-            $table->string('discount_amount');
+            $table->decimal('gross_amount', 10, 2);
+            $table->decimal('discount_amount', 10, 2);
             $table->timestamps();
             
             $table->foreign('branch_name')->references('branch_name')->on('branches')->onDelete('cascade');

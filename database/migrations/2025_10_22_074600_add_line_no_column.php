@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('receipts', function (Blueprint $table) {
-            $table->index('date');
-            $table->index('branch_name');
+        Schema::table('item_details', function (Blueprint $table) {
+            $table->integer('line_no')->nullable();
         });
     }
 
@@ -22,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('receipts', function (Blueprint $table) {
-            $table->dropIndex('date');
+        Schema::table('item_details', function (Blueprint $table) {
+            $table->dropColumn('line_no');
         });
     }
 };
