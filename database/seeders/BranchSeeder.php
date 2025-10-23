@@ -36,6 +36,14 @@ class BranchSeeder extends Seeder
                 'created_at' => '2025-08-20 11:45:36',
                 'updated_at' => '2025-08-20 11:45:36',
             ],
+                   [
+                'branch_name' => 'MYEUREKA SM NORTH',
+                'branch_description' => 'MYEUREKA SM NORTH',
+                'store_name' => 'MYEUREKA PH OPC',
+                'status' => 'active',
+                'created_at' => '2025-08-20 11:45:36',
+                'updated_at' => '2025-08-20 11:45:36',
+            ],
          
         ]);
     }
