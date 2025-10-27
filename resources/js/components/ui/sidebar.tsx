@@ -65,8 +65,13 @@ function SidebarProvider({
   const [openMobile, setOpenMobile] = React.useState(false)
 
   const toggleSidebar = React.useCallback(() => {
+    if (isMobile) {
+      setOpenMobile((previous) => !previous)
+      return
+    }
+
     setOpen(!open)
-  }, [setOpen, open])
+  }, [isMobile, open, setOpen, setOpenMobile])
 
   const state = open ? "expanded" : "collapsed"
 
