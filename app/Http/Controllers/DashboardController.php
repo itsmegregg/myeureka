@@ -112,19 +112,18 @@ class DashboardController extends Controller
             ];
             
             // Calculate Average Transactions Per Day
-            $averageTxQuery = Header::query()
-                ->selectRaw('COUNT(*) as total_transactions, COUNT(DISTINCT date) as total_days')
+            $averageTxQuery = DB::table('daily_summary')
+                ->selectRaw('COALESCE(SUM((si_to - si_from) + 1), 0) as total_transactions')
+                ->selectRaw('COUNT(DISTINCT date) as total_days')
                 ->whereBetween('date', [$startDate, $endDate]);
-                
+
             if ($branch_name !== 'ALL' && $branch_name !== null) {
                 $averageTxQuery->where('branch_name', $branch_name);
             }
-            
+
             if ($concept_name !== 'ALL' && $concept_name !== null) {
                 $averageTxQuery->where('store_name', $concept_name);
             }
-
-            $averageTxQuery->where('void_flag', '0');
 
             $txData = $averageTxQuery->first();
             $totalTransactions = $txData->total_transactions ?? 0;
@@ -137,8 +136,8 @@ class DashboardController extends Controller
             // Get daily sales data from payment details amounts
             $dailySalesQuery = PaymentDetail::query()
                 ->join('header', function ($join) {
-                    $join->on(DB::raw('header.si_number::integer'), '=', 'payment_details.si_number')
-                        ->on('payment_details.terminal_number', '=', 'header.terminal_number')
+                    $join->on(DB::raw('CAST(header.si_number AS INTEGER)'), '=', DB::raw('CAST(payment_details.si_number AS INTEGER)'))
+                        ->on(DB::raw("ltrim(COALESCE(payment_details.terminal_number, '')::text, '0')"), '=', DB::raw("ltrim(COALESCE(header.terminal_number, '')::text, '0')"))
                         ->on('payment_details.branch_name', '=', 'header.branch_name');
                 })
                 ->select(
@@ -161,8 +160,9 @@ class DashboardController extends Controller
             // Get payment type data
             $paymentTypeQuery = PaymentDetail::query()
                 ->join('header', function ($join) {
-                    $join->on(DB::raw('header.si_number::integer'), '=', 'payment_details.si_number')
-                         ->on('payment_details.branch_name', '=', 'header.branch_name');
+                    $join->on(DB::raw('CAST(header.si_number AS INTEGER)'), '=', DB::raw('CAST(payment_details.si_number AS INTEGER)'))
+                         ->on('payment_details.branch_name', '=', 'header.branch_name')
+                         ->on(DB::raw("ltrim(COALESCE(payment_details.terminal_number, '')::text, '0')"), '=', DB::raw("ltrim(COALESCE(header.terminal_number, '')::text, '0')"));
                 })
                 ->select(
                     'payment_details.payment_type',

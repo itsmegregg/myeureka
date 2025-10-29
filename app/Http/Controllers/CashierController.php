@@ -208,4 +208,8 @@ class CashierController extends Controller
             ], 500);
         }   
     }
+
+    public function testPaymentDetails(Request $request){
+
+    }
 }

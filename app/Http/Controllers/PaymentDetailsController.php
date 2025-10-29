@@ -41,22 +41,21 @@ class PaymentDetailsController extends Controller
            )
            ->join('header as h', function ($join) use ($request) {
                $join->on(DB::raw('h.si_number::integer'), '=', 'pd.si_number')
-                   ->on(DB::raw('h.terminal_number::integer'), '=', DB::raw('pd.terminal_number::integer'))
-                   ->on(DB::raw('UPPER(pd.branch_name)'), '=', DB::raw('UPPER(h.branch_name)'))
+                   ->on('pd.terminal_number', '=', 'h.terminal_number')
+                   ->on('pd.branch_name', '=', 'h.branch_name')
                    ->when($request->filled('terminal_number') && strtoupper($request->terminal_number) !== 'ALL', function ($query) use ($request) {
-                       $normalizedTerminal = ltrim($request->terminal_number, '0');
-                       $query->whereRaw('h.terminal_number::integer = ?', [$normalizedTerminal === '' ? 0 : $normalizedTerminal]);
+                       $query->where('h.terminal_number', $request->terminal_number);
                    });
            })
             ->where('h.void_flag', '0')
            ->whereBetween('h.date', [$fromDate, $toDate]);
 
        if ($request->filled('store_name') && strtoupper($request->store_name) !== 'ALL') {
-           $query->whereRaw('UPPER(h.store_name) = ?', [strtoupper($request->store_name)]);
+           $query->where('h.store_name', $request->store_name);
        }
 
        if ($request->filled('branch_name') && strtoupper($request->branch_name) !== 'ALL') {
-           $query->whereRaw('UPPER(h.branch_name) = ?', [strtoupper($request->branch_name)]);
+           $query->where('h.branch_name', $request->branch_name);
        }
 
        $paymentData = $query->groupBy('pd.payment_type', 'h.date')

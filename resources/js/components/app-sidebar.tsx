@@ -63,6 +63,10 @@ const data = {
           title: "Per Category",
           url: "/item-sales/per-category",
         },
+        {
+          title: "Promo",
+          url: "/item-sales/promo",
+        }
       ],
     },
     {

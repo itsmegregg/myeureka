@@ -25,6 +25,7 @@ use App\Http\Controllers\VoidTxController;
 use App\Http\Controllers\CashierController;
 use App\Http\Controllers\FastMovingController;
 use App\Http\Controllers\DailySalesController;
+use App\Http\Controllers\PromoController;
 
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -73,6 +74,7 @@ Route::get('/sales/discount-report', [DiscountController::class, 'discountReport
 //payment details apis
 Route::get('/sales/payment-details', [PaymentDetailsController::class, 'getPaymentData']);
 Route::get('/sales/hourly-report', [HourlyController::class, 'getHourlyData']);
+Route::get('/item-sales/promos', [PromoController::class, 'fetchPromoDetails']);
 
 
 //bir summary apis

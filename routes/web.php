@@ -86,4 +86,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\ValidateActiveSessio
     Route::get('time-based', function () {
         return Inertia::render('timeBased/index');
     })->name('time-based');
+
+    Route::get('item-sales/promo', function () {
+        return Inertia::render('itemSales/promo');
+    })->name('promo');
 });
